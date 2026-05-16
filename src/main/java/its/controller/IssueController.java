@@ -31,6 +31,10 @@ public class IssueController {
         return service.listUsers();
     }
 
+    public UserAccount login(String username, String password) {
+        return service.login(username, password);
+    }
+
     public List<Issue> issues() {
         return service.listIssues();
     }

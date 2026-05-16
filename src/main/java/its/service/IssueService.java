@@ -24,6 +24,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class IssueService {
+    private static final String DEMO_PASSWORD = "1234";
+
     private final IssueRepository repository;
 
     public IssueService(IssueRepository repository) {
@@ -36,6 +38,13 @@ public class IssueService {
 
     public List<UserAccount> listUsers() {
         return List.copyOf(repository.load().getUsers());
+    }
+
+    public UserAccount login(String username, String password) {
+        if (!DEMO_PASSWORD.equals(password)) {
+            throw new IllegalArgumentException("Invalid username or password.");
+        }
+        return requireUser(repository.load(), username);
     }
 
     public List<Issue> listIssues() {

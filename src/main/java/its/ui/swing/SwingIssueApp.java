@@ -7,6 +7,7 @@ import its.model.Issue;
 import its.model.IssueStatus;
 import its.model.Priority;
 import its.model.Role;
+import its.model.UserAccount;
 import its.service.IssueSearchCriteria;
 
 import javax.swing.BorderFactory;
@@ -18,25 +19,34 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SwingIssueApp extends JFrame {
     private final IssueController controller;
     private final DefaultListModel<Issue> issueListModel = new DefaultListModel<>();
     private final JList<Issue> issueList = new JList<>(issueListModel);
-    private final JTextArea detailArea = new JTextArea();
+    private final JLabel ticketTitleLabel = new JLabel("No ticket selected");
+    private final JTextArea ticketPropertiesArea = new JTextArea();
+    private final JTextArea descriptionArea = new JTextArea();
+    private final JTextArea commentsArea = new JTextArea();
     private final JTextField queryField = new JTextField();
     private final JTextField reporterField = new JTextField();
     private final JTextField assigneeField = new JTextField();
     private final JComboBox<String> statusBox = new JComboBox<>();
+    private final JLabel currentUserLabel = new JLabel("Not logged in");
+    private final List<JButton> loginRequiredButtons = new ArrayList<>();
+    private UserAccount currentUser;
 
     public SwingIssueApp(IssueController controller) {
         super("Issue Management System - Swing");
@@ -48,53 +58,177 @@ public class SwingIssueApp extends JFrame {
     }
 
     private void buildUi() {
-        JPanel filters = new JPanel(new GridLayout(2, 5, 6, 6));
+        JPanel loginPanel = new JPanel(new GridLayout(1, 2, 6, 6));
+        JButton switchUserButton = new JButton("Switch User");
+        switchUserButton.addActionListener(e -> switchUser());
+        loginPanel.add(currentUserLabel);
+        loginPanel.add(switchUserButton);
+
+        JPanel filters = new JPanel(new GridLayout(5, 2, 6, 6));
+        filters.setBorder(BorderFactory.createTitledBorder("Ticket Query"));
         statusBox.addItem("");
         for (IssueStatus status : IssueStatus.values()) {
             statusBox.addItem(status.name());
         }
         filters.add(new JLabel("Query"));
-        filters.add(new JLabel("Reporter"));
-        filters.add(new JLabel("Assignee"));
-        filters.add(new JLabel("Status"));
-        filters.add(new JLabel(""));
         filters.add(queryField);
+        filters.add(new JLabel("Reporter"));
         filters.add(reporterField);
+        filters.add(new JLabel("Assignee"));
         filters.add(assigneeField);
+        filters.add(new JLabel("Status"));
         filters.add(statusBox);
+        filters.add(new JLabel(""));
         JButton searchButton = new JButton("Search");
         searchButton.addActionListener(e -> search());
         filters.add(searchButton);
 
-        detailArea.setEditable(false);
+        JPanel ticketListPanel = new JPanel(new BorderLayout(6, 6));
+        ticketListPanel.setBorder(BorderFactory.createTitledBorder("Tickets"));
+        ticketListPanel.add(new JScrollPane(issueList), BorderLayout.CENTER);
+
+        JPanel leftPanel = new JPanel(new BorderLayout(8, 8));
+        leftPanel.add(filters, BorderLayout.NORTH);
+        leftPanel.add(ticketListPanel, BorderLayout.CENTER);
+
+        JPanel rightPanel = buildTicketDetailPanel();
         issueList.addListSelectionListener(e -> showSelectedIssue());
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(issueList), new JScrollPane(detailArea));
-        split.setDividerLocation(360);
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
+        split.setDividerLocation(330);
 
         JPanel actions = new JPanel(new GridLayout(2, 5, 6, 6));
-        addButton(actions, "Add User", this::addUser);
-        addButton(actions, "New Issue", this::newIssue);
-        addButton(actions, "Comment", this::addComment);
-        addButton(actions, "Assign", this::assign);
-        addButton(actions, "Fix", this::fix);
-        addButton(actions, "Resolve", () -> changeStatus(IssueStatus.RESOLVED));
-        addButton(actions, "Close", () -> changeStatus(IssueStatus.CLOSED));
-        addButton(actions, "Reopen", () -> changeStatus(IssueStatus.REOPENED));
+        actions.setBorder(BorderFactory.createTitledBorder("Ticket Actions"));
+        addLoginRequiredButton(actions, "Add User", this::addUser);
+        addLoginRequiredButton(actions, "New Issue", this::newIssue);
+        addLoginRequiredButton(actions, "Comment", this::addComment);
+        addLoginRequiredButton(actions, "Assign", this::assign);
+        addLoginRequiredButton(actions, "Fix", this::fix);
+        addLoginRequiredButton(actions, "Resolve", () -> changeStatus(IssueStatus.RESOLVED));
+        addLoginRequiredButton(actions, "Close", () -> changeStatus(IssueStatus.CLOSED));
+        addLoginRequiredButton(actions, "Reopen", () -> changeStatus(IssueStatus.REOPENED));
         addButton(actions, "Recommend", this::recommend);
         addButton(actions, "Stats", this::stats);
 
         JPanel root = new JPanel(new BorderLayout(8, 8));
         root.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        root.add(filters, BorderLayout.NORTH);
+        root.add(loginPanel, BorderLayout.NORTH);
         root.add(split, BorderLayout.CENTER);
         root.add(actions, BorderLayout.SOUTH);
         setContentPane(root);
+        updateLoginState();
+    }
+
+    private JPanel buildTicketDetailPanel() {
+        ticketTitleLabel.setFont(ticketTitleLabel.getFont().deriveFont(Font.BOLD, 18f));
+        ticketTitleLabel.setBorder(BorderFactory.createEmptyBorder(4, 6, 8, 6));
+
+        configureReadOnly(ticketPropertiesArea);
+        configureReadOnly(descriptionArea);
+        configureReadOnly(commentsArea);
+
+        JPanel propertiesPanel = new JPanel(new BorderLayout());
+        propertiesPanel.setBorder(BorderFactory.createTitledBorder("Properties"));
+        propertiesPanel.add(new JScrollPane(ticketPropertiesArea), BorderLayout.CENTER);
+
+        JPanel descriptionPanel = new JPanel(new BorderLayout());
+        descriptionPanel.setBorder(BorderFactory.createTitledBorder("Description"));
+        descriptionPanel.add(new JScrollPane(descriptionArea), BorderLayout.CENTER);
+
+        JPanel commentsPanel = new JPanel(new BorderLayout());
+        commentsPanel.setBorder(BorderFactory.createTitledBorder("Change History"));
+        commentsPanel.add(new JScrollPane(commentsArea), BorderLayout.CENTER);
+
+        JSplitPane lowerSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, descriptionPanel, commentsPanel);
+        lowerSplit.setResizeWeight(0.45);
+
+        JPanel detailBody = new JPanel(new BorderLayout(8, 8));
+        detailBody.add(propertiesPanel, BorderLayout.NORTH);
+        detailBody.add(lowerSplit, BorderLayout.CENTER);
+
+        JPanel detailPanel = new JPanel(new BorderLayout(8, 8));
+        detailPanel.setBorder(BorderFactory.createTitledBorder("Ticket Detail"));
+        detailPanel.add(ticketTitleLabel, BorderLayout.NORTH);
+        detailPanel.add(detailBody, BorderLayout.CENTER);
+        return detailPanel;
+    }
+
+    private void configureReadOnly(JTextArea area) {
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
     }
 
     private void addButton(JPanel panel, String text, Runnable action) {
         JButton button = new JButton(text);
         button.addActionListener(e -> runSafely(action));
         panel.add(button);
+    }
+
+    private void addLoginRequiredButton(JPanel panel, String text, Runnable action) {
+        JButton button = new JButton(text);
+        button.addActionListener(e -> runSafely(action));
+        loginRequiredButtons.add(button);
+        panel.add(button);
+    }
+
+    public boolean loginBeforeShow() {
+        UserAccount selected = selectUser("Login", true);
+        if (selected == null) {
+            return false;
+        }
+        currentUser = selected;
+        updateLoginState();
+        return true;
+    }
+
+    private void switchUser() {
+        UserAccount selected = selectUser("Switch User", false);
+        if (selected != null) {
+            currentUser = selected;
+            updateLoginState();
+        }
+    }
+
+    private UserAccount selectUser(String title, boolean required) {
+        if (controller.users().isEmpty()) {
+            message("No account exists. Demo data should create accounts automatically.");
+            return null;
+        }
+        JTextField usernameField = new JTextField(currentUser == null ? "" : currentUser.getUsername());
+        JPasswordField passwordField = new JPasswordField();
+        JPanel loginForm = new JPanel(new GridLayout(2, 2, 6, 6));
+        loginForm.add(new JLabel("Username"));
+        loginForm.add(usernameField);
+        loginForm.add(new JLabel("Password"));
+        loginForm.add(passwordField);
+
+        while (true) {
+            int option = JOptionPane.showConfirmDialog(this, loginForm, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            if (option != JOptionPane.OK_OPTION) {
+                if (required) {
+                    message("Login is required to use the system.");
+                }
+                return null;
+            }
+            try {
+                return controller.login(usernameField.getText(), new String(passwordField.getPassword()));
+            } catch (RuntimeException e) {
+                message(e.getMessage());
+                passwordField.setText("");
+            }
+        }
+    }
+
+    private void updateLoginState() {
+        if (currentUser == null) {
+            currentUserLabel.setText("Not logged in");
+        } else {
+            currentUserLabel.setText("Logged in: " + currentUser.getUsername() + " (" + currentUser.getRole() + ")");
+        }
+        for (JButton button : loginRequiredButtons) {
+            button.setEnabled(currentUser != null);
+        }
     }
 
     private void search() {
@@ -108,6 +242,7 @@ public class SwingIssueApp extends JFrame {
     }
 
     private void addUser() {
+        requireRole(Role.ADMIN, "Only admin can add users.");
         String username = input("Username");
         if (username == null) {
             return;
@@ -121,66 +256,67 @@ public class SwingIssueApp extends JFrame {
     }
 
     private void newIssue() {
+        requireLogin();
         String title = input("Title");
         String description = input("Description");
-        String reporter = input("Reporter");
-        if (title != null && description != null && reporter != null) {
-            controller.createIssue("project1", title, description, reporter, Priority.MAJOR);
+        Priority priority = (Priority) JOptionPane.showInputDialog(this, "Priority", "New Issue",
+                JOptionPane.PLAIN_MESSAGE, null, Priority.values(), Priority.MAJOR);
+        if (title != null && description != null && priority != null) {
+            controller.createIssue("project1", title, description, currentUser.getUsername(), priority);
             refreshIssues(controller.issues());
         }
     }
 
     private void addComment() {
+        requireLogin();
         Issue issue = selectedIssue();
         if (issue == null) {
             return;
         }
-        String author = input("Author");
         String message = input("Comment");
-        if (author != null && message != null) {
-            controller.addComment(issue.getId(), author, message);
+        if (message != null) {
+            controller.addComment(issue.getId(), currentUser.getUsername(), message);
             refreshIssues(controller.issues());
         }
     }
 
     private void assign() {
+        requireRole(Role.PL, "Only PL can assign issues.");
         Issue issue = selectedIssue();
         if (issue == null) {
             return;
         }
         String assignee = input("Assignee dev account");
-        String actor = input("PL actor");
         String comment = input("Comment");
-        if (assignee != null && actor != null) {
-            controller.assignIssue(issue.getId(), assignee, actor, comment == null ? "" : comment);
+        if (assignee != null) {
+            controller.assignIssue(issue.getId(), assignee, currentUser.getUsername(), comment == null ? "" : comment);
             refreshIssues(controller.issues());
         }
     }
 
     private void fix() {
+        requireRole(Role.DEV, "Only dev can mark an issue fixed.");
         Issue issue = selectedIssue();
         if (issue == null) {
             return;
         }
-        String fixer = input("Fixer dev account");
         String comment = input("Comment");
-        if (fixer != null) {
-            controller.markFixed(issue.getId(), fixer, comment == null ? "" : comment);
-            refreshIssues(controller.issues());
-        }
+        controller.markFixed(issue.getId(), currentUser.getUsername(), comment == null ? "" : comment);
+        refreshIssues(controller.issues());
     }
 
     private void changeStatus(IssueStatus status) {
+        requireLogin();
+        if (status == IssueStatus.CLOSED) {
+            requireRole(Role.PL, "Only PL can close issues.");
+        }
         Issue issue = selectedIssue();
         if (issue == null) {
             return;
         }
-        String actor = input("Actor");
         String comment = input("Comment");
-        if (actor != null) {
-            controller.changeStatus(issue.getId(), status, actor, comment == null ? "" : comment);
-            refreshIssues(controller.issues());
-        }
+        controller.changeStatus(issue.getId(), status, currentUser.getUsername(), comment == null ? "" : comment);
+        refreshIssues(controller.issues());
     }
 
     private void recommend() {
@@ -207,7 +343,7 @@ public class SwingIssueApp extends JFrame {
         if (!issueListModel.isEmpty()) {
             issueList.setSelectedIndex(0);
         } else {
-            detailArea.setText("");
+            clearTicketDetail();
         }
     }
 
@@ -216,21 +352,34 @@ public class SwingIssueApp extends JFrame {
         if (issue == null) {
             return;
         }
-        StringBuilder builder = new StringBuilder();
-        builder.append("ID: ").append(issue.getId()).append('\n');
-        builder.append("Title: ").append(issue.getTitle()).append('\n');
-        builder.append("Description: ").append(issue.getDescription()).append('\n');
-        builder.append("Project: ").append(issue.getProjectName()).append('\n');
-        builder.append("Reporter: ").append(issue.getReporter()).append('\n');
-        builder.append("Reported: ").append(issue.getReportedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))).append('\n');
-        builder.append("Priority: ").append(issue.getPriority()).append('\n');
-        builder.append("Status: ").append(issue.getStatus()).append('\n');
-        builder.append("Assignee: ").append(value(issue.getAssignee())).append('\n');
-        builder.append("Fixer: ").append(value(issue.getFixer())).append("\n\nComments\n");
+        ticketTitleLabel.setText("#" + issue.getId() + " " + issue.getTitle());
+        StringBuilder properties = new StringBuilder();
+        properties.append("Project  : ").append(issue.getProjectName()).append('\n');
+        properties.append("Status   : ").append(issue.getStatus()).append('\n');
+        properties.append("Priority : ").append(issue.getPriority()).append('\n');
+        properties.append("Reporter : ").append(issue.getReporter()).append('\n');
+        properties.append("Reported : ").append(issue.getReportedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))).append('\n');
+        properties.append("Assignee : ").append(value(issue.getAssignee())).append('\n');
+        properties.append("Fixer    : ").append(value(issue.getFixer()));
+        ticketPropertiesArea.setText(properties.toString());
+        ticketPropertiesArea.setCaretPosition(0);
+
+        descriptionArea.setText(issue.getDescription());
+        descriptionArea.setCaretPosition(0);
+
+        StringBuilder comments = new StringBuilder();
         for (Comment comment : issue.getComments()) {
-            builder.append(comment).append('\n');
+            comments.append(comment).append('\n');
         }
-        detailArea.setText(builder.toString());
+        commentsArea.setText(comments.isEmpty() ? "No comments yet." : comments.toString());
+        commentsArea.setCaretPosition(0);
+    }
+
+    private void clearTicketDetail() {
+        ticketTitleLabel.setText("No ticket selected");
+        ticketPropertiesArea.setText("");
+        descriptionArea.setText("");
+        commentsArea.setText("");
     }
 
     private Issue selectedIssue() {
@@ -257,11 +406,31 @@ public class SwingIssueApp extends JFrame {
         }
     }
 
+    private void requireLogin() {
+        if (currentUser == null) {
+            throw new IllegalStateException("Login first.");
+        }
+    }
+
+    private void requireRole(Role role, String message) {
+        requireLogin();
+        if (currentUser.getRole() != role) {
+            throw new IllegalStateException(message);
+        }
+    }
+
     private static String value(String value) {
         return value == null ? "-" : value;
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new SwingIssueApp(AppFactory.createController()).setVisible(true));
+        SwingUtilities.invokeLater(() -> {
+            SwingIssueApp app = new SwingIssueApp(AppFactory.createController());
+            if (app.loginBeforeShow()) {
+                app.setVisible(true);
+            } else {
+                app.dispose();
+            }
+        });
     }
 }

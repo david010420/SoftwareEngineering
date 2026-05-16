@@ -138,7 +138,32 @@ powershell -ExecutionPolicy Bypass -File scripts/run-awt.ps1
 
 두 UI 모두 동일한 controller/service/model/repository를 재사용한다.
 
-### 1.9 테스트
+Swing UI는 Trac의 ticket browser/detail 화면을 참고하여 다음 구조로 개선했다.
+
+- 왼쪽: ticket query 필터와 ticket 목록
+- 오른쪽: ticket 상세 화면
+- 상세 화면: ticket 제목, properties, description, change history 영역 분리
+- 하단: ticket actions 버튼 그룹
+
+### 1.9 로그인 기능
+
+Swing UI 시작 시 아이디/비밀번호 입력 기반 로그인 다이얼로그가 먼저 표시되도록 구현했다.
+
+- 앱 시작 시 username/password 직접 입력 후 로그인
+- 데모 계정의 공통 비밀번호는 `1234`
+- 로그인 취소 시 앱 종료
+- 로그인 성공 전에는 메인 화면을 표시하지 않음
+- 실행 중 `Switch User` 버튼으로 다른 계정 로그인
+- 로그인 상태 라벨 표시
+- 로그인 전에는 이슈 생성, 댓글, assign, fix, resolve, close, reopen, add user 버튼 비활성화
+- 이슈 생성 시 reporter는 로그인한 계정으로 자동 저장
+- 댓글 작성자는 로그인한 계정으로 자동 저장
+- assign/fix/status 변경 actor도 로그인한 계정으로 자동 처리
+- `Add User`는 admin 계정만 가능
+- `Assign`, `Close`는 PL 계정만 가능
+- `Fix`는 dev 계정만 가능
+
+### 1.10 테스트
 
 모델/서비스 흐름 검증용 테스트 하네스를 작성했다.
 
@@ -329,7 +354,7 @@ powershell -ExecutionPolicy Bypass -File scripts/run-awt.ps1
 - [ ] 발표 슬라이드 작성
 - [ ] 소개/데모 영상 제작
 - [ ] JUnit 테스트 코드 보완
-- [ ] Swing UI 실행 캡처
+- [ ] Swing UI 로그인 화면 및 실행 화면 캡처
 - [ ] AWT UI 실행 캡처
 - [ ] 테스트 실행 결과 캡처
 - [ ] GitHub commit history 캡처

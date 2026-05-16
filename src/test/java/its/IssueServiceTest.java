@@ -22,6 +22,8 @@ public class IssueServiceTest {
         controller.addUser("PL1", Role.PL);
         controller.addUser("dev1", Role.DEV);
         controller.addUser("tester1", Role.TESTER);
+        assertEquals("tester1", controller.login("tester1", "1234").getUsername(), "login succeeds");
+        assertThrows(() -> controller.login("tester1", "wrong"), "login rejects invalid password");
 
         Issue issue = controller.createIssue("project1", "Login error", "Cannot login with valid account", "tester1", Priority.MAJOR);
         assertEquals(IssueStatus.NEW, issue.getStatus(), "new issue status");
@@ -45,5 +47,14 @@ public class IssueServiceTest {
         if (!expected.equals(actual)) {
             throw new AssertionError(label + " expected=" + expected + " actual=" + actual);
         }
+    }
+
+    private static void assertThrows(Runnable action, String label) {
+        try {
+            action.run();
+        } catch (RuntimeException e) {
+            return;
+        }
+        throw new AssertionError(label + " expected exception");
     }
 }
