@@ -48,21 +48,23 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public List<UserAccount> findAll() {
-        return null;
+        return userRepository.findAll();
     }
 
     @Override
     public List<UserAccount> findByRole(Role role) {
-        return null;
+        return userRepository.findByRole(role);
     }
 
     @Override
     public UserAccount findByUsername(String username) {
-        return null;
+        return userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException(username));
     }
 
     @Override
     public void delete(String requesterUsername, String targetUsername) {
-
+        requireRole(requesterUsername, Role.ADMIN);
+        findByUsername(targetUsername); // 존재 여부 확인
+        userRepository.delete(targetUsername);
     }
 }
