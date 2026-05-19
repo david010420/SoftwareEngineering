@@ -22,6 +22,7 @@ import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
@@ -45,6 +46,7 @@ public class SwingIssueApp extends JFrame {
     private final JTextField assigneeField = new JTextField();
     private final JComboBox<String> statusBox = new JComboBox<>();
     private final JLabel currentUserLabel = new JLabel("Not logged in");
+    private final JLabel selectedTicketLabel = new JLabel("Selected ticket: none");
     private final List<JButton> loginRequiredButtons = new ArrayList<>();
     private UserAccount currentUser;
 
@@ -64,6 +66,21 @@ public class SwingIssueApp extends JFrame {
         loginPanel.add(currentUserLabel);
         loginPanel.add(switchUserButton);
 
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Browse", buildBrowseTab());
+        tabs.addTab("New Issue", buildNewIssueTab());
+        tabs.addTab("Workflow", buildWorkflowTab());
+        tabs.addTab("Reports & Admin", buildReportsTab());
+
+        JPanel root = new JPanel(new BorderLayout(8, 8));
+        root.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        root.add(loginPanel, BorderLayout.NORTH);
+        root.add(tabs, BorderLayout.CENTER);
+        setContentPane(root);
+        updateLoginState();
+    }
+
+    private JPanel buildBrowseTab() {
         JPanel filters = new JPanel(new GridLayout(5, 2, 6, 6));
         filters.setBorder(BorderFactory.createTitledBorder("Ticket Query"));
         statusBox.addItem("");
@@ -96,26 +113,80 @@ public class SwingIssueApp extends JFrame {
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
         split.setDividerLocation(330);
 
-        JPanel actions = new JPanel(new GridLayout(2, 5, 6, 6));
-        actions.setBorder(BorderFactory.createTitledBorder("Ticket Actions"));
-        addLoginRequiredButton(actions, "Add User", this::addUser);
-        addLoginRequiredButton(actions, "New Issue", this::newIssue);
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.add(split, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel buildNewIssueTab() {
+        JTextField titleField = new JTextField();
+        JTextArea descriptionField = new JTextArea(10, 40);
+        descriptionField.setLineWrap(true);
+        descriptionField.setWrapStyleWord(true);
+        JComboBox<Priority> priorityBox = new JComboBox<>(Priority.values());
+        priorityBox.setSelectedItem(Priority.MAJOR);
+
+        JPanel form = new JPanel(new BorderLayout(8, 8));
+        JPanel fields = new JPanel(new GridLayout(2, 2, 6, 6));
+        fields.add(new JLabel("Title"));
+        fields.add(titleField);
+        fields.add(new JLabel("Priority"));
+        fields.add(priorityBox);
+        form.add(fields, BorderLayout.NORTH);
+        form.add(new JScrollPane(descriptionField), BorderLayout.CENTER);
+
+        JButton createButton = new JButton("Create Issue");
+        createButton.addActionListener(e -> runSafely(() -> {
+            requireLogin();
+            String title = titleField.getText().trim();
+            String description = descriptionField.getText().trim();
+            if (title.isBlank() || description.isBlank()) {
+                throw new IllegalStateException("Title and description are required.");
+            }
+            controller.createIssue("project1", title, description, currentUser.getUsername(), (Priority) priorityBox.getSelectedItem());
+            titleField.setText("");
+            descriptionField.setText("");
+            refreshIssues(controller.issues());
+            message("Issue created.");
+        }));
+        loginRequiredButtons.add(createButton);
+
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        panel.add(form, BorderLayout.CENTER);
+        panel.add(createButton, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private JPanel buildWorkflowTab() {
+        JPanel actions = new JPanel(new GridLayout(2, 4, 6, 6));
+        actions.setBorder(BorderFactory.createTitledBorder("Ticket Workflow"));
         addLoginRequiredButton(actions, "Comment", this::addComment);
         addLoginRequiredButton(actions, "Assign", this::assign);
         addLoginRequiredButton(actions, "Fix", this::fix);
         addLoginRequiredButton(actions, "Resolve", () -> changeStatus(IssueStatus.RESOLVED));
         addLoginRequiredButton(actions, "Close", () -> changeStatus(IssueStatus.CLOSED));
         addLoginRequiredButton(actions, "Reopen", () -> changeStatus(IssueStatus.REOPENED));
-        addButton(actions, "Recommend", this::recommend);
+
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        selectedTicketLabel.setBorder(BorderFactory.createEmptyBorder(0, 4, 8, 4));
+        panel.add(selectedTicketLabel, BorderLayout.NORTH);
+        panel.add(actions, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel buildReportsTab() {
+        JPanel actions = new JPanel(new GridLayout(2, 2, 6, 6));
+        actions.setBorder(BorderFactory.createTitledBorder("Reports & Admin"));
+        addLoginRequiredButton(actions, "Add User", this::addUser);
+        addButton(actions, "Recommend Assignee", this::recommend);
         addButton(actions, "Stats", this::stats);
 
-        JPanel root = new JPanel(new BorderLayout(8, 8));
-        root.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        root.add(loginPanel, BorderLayout.NORTH);
-        root.add(split, BorderLayout.CENTER);
-        root.add(actions, BorderLayout.SOUTH);
-        setContentPane(root);
-        updateLoginState();
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        panel.add(actions, BorderLayout.NORTH);
+        return panel;
     }
 
     private JPanel buildTicketDetailPanel() {
@@ -352,6 +423,7 @@ public class SwingIssueApp extends JFrame {
         if (issue == null) {
             return;
         }
+        selectedTicketLabel.setText("Selected ticket: #" + issue.getId() + " " + issue.getTitle());
         ticketTitleLabel.setText("#" + issue.getId() + " " + issue.getTitle());
         StringBuilder properties = new StringBuilder();
         properties.append("Project  : ").append(issue.getProjectName()).append('\n');
@@ -376,6 +448,7 @@ public class SwingIssueApp extends JFrame {
     }
 
     private void clearTicketDetail() {
+        selectedTicketLabel.setText("Selected ticket: none");
         ticketTitleLabel.setText("No ticket selected");
         ticketPropertiesArea.setText("");
         descriptionArea.setText("");
