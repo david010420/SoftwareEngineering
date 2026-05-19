@@ -17,12 +17,14 @@ repositories {
 
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.9.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation 'com.mysql:mysql-connector-j:8.3.0'
     implementation 'com.zaxxer:HikariCP:5.1.0'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+    failOnNoDiscoveredTests = false
 }
 
 tasks.withType(JavaCompile) {
@@ -50,7 +52,7 @@ task runAWT(type: JavaExec) {
 task runTest(type: JavaExec) {
     group = 'application'
     description = 'Run IssueServiceTest'
-    classpath = sourceSets.main.runtimeClasspath
+    classpath = sourceSets.test.runtimeClasspath
     mainClass = 'its.IssueServiceTest'
 }
 
