@@ -27,10 +27,13 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class SwingIssueApp extends JFrame {
@@ -47,7 +50,12 @@ public class SwingIssueApp extends JFrame {
     private final JComboBox<String> statusBox = new JComboBox<>();
     private final JLabel currentUserLabel = new JLabel("Not logged in");
     private final JLabel selectedTicketLabel = new JLabel("Selected ticket: none");
-    private final List<JButton> loginRequiredButtons = new ArrayList<>();
+    private final List<RoleAction> roleActions = new ArrayList<>();
+    private JTabbedPane tabs;
+    private JPanel browseTab;
+    private JPanel newIssueTab;
+    private JPanel workflowTab;
+    private JPanel reportsTab;
     private UserAccount currentUser;
 
     public SwingIssueApp(IssueController controller) {
@@ -66,11 +74,11 @@ public class SwingIssueApp extends JFrame {
         loginPanel.add(currentUserLabel);
         loginPanel.add(switchUserButton);
 
-        JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Browse", buildBrowseTab());
-        tabs.addTab("New Issue", buildNewIssueTab());
-        tabs.addTab("Workflow", buildWorkflowTab());
-        tabs.addTab("Reports & Admin", buildReportsTab());
+        tabs = new JTabbedPane();
+        browseTab = buildBrowseTab();
+        newIssueTab = buildNewIssueTab();
+        workflowTab = buildWorkflowTab();
+        reportsTab = buildReportsTab();
 
         JPanel root = new JPanel(new BorderLayout(8, 8));
         root.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -149,7 +157,7 @@ public class SwingIssueApp extends JFrame {
             refreshIssues(controller.issues());
             message("Issue created.");
         }));
-        loginRequiredButtons.add(createButton);
+        roleActions.add(new RoleAction(createButton, Role.TESTER));
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -159,14 +167,14 @@ public class SwingIssueApp extends JFrame {
     }
 
     private JPanel buildWorkflowTab() {
-        JPanel actions = new JPanel(new GridLayout(2, 4, 6, 6));
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         actions.setBorder(BorderFactory.createTitledBorder("Ticket Workflow"));
-        addLoginRequiredButton(actions, "Comment", this::addComment);
-        addLoginRequiredButton(actions, "Assign", this::assign);
-        addLoginRequiredButton(actions, "Fix", this::fix);
-        addLoginRequiredButton(actions, "Resolve", () -> changeStatus(IssueStatus.RESOLVED));
-        addLoginRequiredButton(actions, "Close", () -> changeStatus(IssueStatus.CLOSED));
-        addLoginRequiredButton(actions, "Reopen", () -> changeStatus(IssueStatus.REOPENED));
+        addRoleButton(actions, "Comment", this::addComment, Role.ADMIN, Role.PL, Role.DEV, Role.TESTER);
+        addRoleButton(actions, "Assign", this::assign, Role.PL);
+        addRoleButton(actions, "Fix", this::fix, Role.DEV);
+        addRoleButton(actions, "Resolve", () -> changeStatus(IssueStatus.RESOLVED), Role.TESTER);
+        addRoleButton(actions, "Close", () -> changeStatus(IssueStatus.CLOSED), Role.PL);
+        addRoleButton(actions, "Reopen", () -> changeStatus(IssueStatus.REOPENED), Role.TESTER);
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -177,11 +185,11 @@ public class SwingIssueApp extends JFrame {
     }
 
     private JPanel buildReportsTab() {
-        JPanel actions = new JPanel(new GridLayout(2, 2, 6, 6));
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         actions.setBorder(BorderFactory.createTitledBorder("Reports & Admin"));
-        addLoginRequiredButton(actions, "Add User", this::addUser);
-        addButton(actions, "Recommend Assignee", this::recommend);
-        addButton(actions, "Stats", this::stats);
+        addRoleButton(actions, "Add User", this::addUser, Role.ADMIN);
+        addRoleButton(actions, "Recommend Assignee", this::recommend, Role.PL);
+        addRoleButton(actions, "Stats", this::stats, Role.ADMIN, Role.PL);
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -236,10 +244,10 @@ public class SwingIssueApp extends JFrame {
         panel.add(button);
     }
 
-    private void addLoginRequiredButton(JPanel panel, String text, Runnable action) {
+    private void addRoleButton(JPanel panel, String text, Runnable action, Role... allowedRoles) {
         JButton button = new JButton(text);
         button.addActionListener(e -> runSafely(action));
-        loginRequiredButtons.add(button);
+        roleActions.add(new RoleAction(button, allowedRoles));
         panel.add(button);
     }
 
@@ -297,9 +305,58 @@ public class SwingIssueApp extends JFrame {
         } else {
             currentUserLabel.setText("Logged in: " + currentUser.getUsername() + " (" + currentUser.getRole() + ")");
         }
-        for (JButton button : loginRequiredButtons) {
-            button.setEnabled(currentUser != null);
+        for (RoleAction action : roleActions) {
+            action.button.setVisible(currentUser != null && action.allows(currentUser.getRole()));
         }
+        rebuildVisibleTabs();
+        revalidate();
+        repaint();
+    }
+
+    private void rebuildVisibleTabs() {
+        if (tabs == null) {
+            return;
+        }
+        Component selected = tabs.getSelectedComponent();
+        tabs.removeAll();
+        tabs.addTab("Browse", browseTab);
+        if (currentUser != null && currentUser.getRole() == Role.TESTER) {
+            tabs.addTab("New Issue", newIssueTab);
+        }
+        if (currentUser != null && hasAnyActionFor(workflowTab, currentUser.getRole())) {
+            tabs.addTab("Workflow", workflowTab);
+        }
+        if (currentUser != null && hasAnyActionFor(reportsTab, currentUser.getRole())) {
+            tabs.addTab("Reports & Admin", reportsTab);
+        }
+        if (selected != null) {
+            for (int i = 0; i < tabs.getTabCount(); i++) {
+                if (tabs.getComponentAt(i) == selected) {
+                    tabs.setSelectedIndex(i);
+                    return;
+                }
+            }
+        }
+    }
+
+    private boolean hasAnyActionFor(Component root, Role role) {
+        for (RoleAction action : roleActions) {
+            if (isDescendant(root, action.button) && action.allows(role)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isDescendant(Component root, Component child) {
+        Component current = child;
+        while (current != null) {
+            if (current == root) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
     }
 
     private void search() {
@@ -494,6 +551,20 @@ public class SwingIssueApp extends JFrame {
 
     private static String value(String value) {
         return value == null ? "-" : value;
+    }
+
+    private static class RoleAction {
+        private final JButton button;
+        private final List<Role> allowedRoles;
+
+        private RoleAction(JButton button, Role... allowedRoles) {
+            this.button = button;
+            this.allowedRoles = Arrays.asList(allowedRoles);
+        }
+
+        private boolean allows(Role role) {
+            return allowedRoles.contains(role);
+        }
     }
 
     public static void main(String[] args) {

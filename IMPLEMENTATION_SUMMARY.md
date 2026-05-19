@@ -155,13 +155,17 @@ Swing UI 시작 시 아이디/비밀번호 입력 기반 로그인 다이얼로�
 - 로그인 성공 전에는 메인 화면을 표시하지 않음
 - 실행 중 `Switch User` 버튼으로 다른 계정 로그인
 - 로그인 상태 라벨 표시
-- 로그인 전에는 이슈 생성, 댓글, assign, fix, resolve, close, reopen, add user 버튼 비활성화
+- 로그인 전에는 Browse 탭만 표시
+- 로그인 후에는 role에 따라 사용할 수 있는 탭과 버튼만 표시
 - 이슈 생성 시 reporter는 로그인한 계정으로 자동 저장
 - 댓글 작성자는 로그인한 계정으로 자동 저장
 - assign/fix/status 변경 actor도 로그인한 계정으로 자동 처리
 - `Add User`는 admin 계정만 가능
 - `Assign`, `Close`는 PL 계정만 가능
 - `Fix`는 dev 계정만 가능
+- `New Issue`, `Resolve`, `Reopen`은 tester 계정에서 표시
+- `Recommend Assignee`는 PL 계정에서 표시
+- `Stats`는 admin/PL 계정에서 표시
 
 ### 1.10 테스트
 
