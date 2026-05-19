@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService{
                 .orElseThrow(() -> new RuntimeException(username));
 
         if (!account.checkPassword(password)) {
-            throw new AuthenticationException();
+            throw new RuntimeException();
         }
         return account;
     }
