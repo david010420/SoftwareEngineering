@@ -31,6 +31,11 @@ public class UserAccount implements Serializable {
         return role;
     }
 
+    //로그인용
+    public boolean checkPassword(String raw) {
+        return password.equals(raw);
+    }
+
     @Override
     public String toString() {
         return username + " (" + role + ")";

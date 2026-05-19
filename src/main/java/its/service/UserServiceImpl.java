@@ -37,7 +37,13 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public UserAccount login(String username, String password) {
-        return null;
+        UserAccount account = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException(username));
+
+        if (!account.checkPassword(password)) {
+            throw new AuthenticationException();
+        }
+        return account;
     }
 
     @Override
