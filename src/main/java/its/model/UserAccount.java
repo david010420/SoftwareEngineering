@@ -31,6 +31,8 @@ public class UserAccount implements Serializable {
         return role;
     }
 
+    public String getPassword() {return password;}
+
     //로그인용
     public boolean checkPassword(String raw) {
         return password.equals(raw);
