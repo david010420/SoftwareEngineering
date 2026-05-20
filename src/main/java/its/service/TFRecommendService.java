@@ -64,6 +64,7 @@ public class TFRecommendService implements RecommendService {
                 .collect(Collectors.toList());
     }
 
+    //
     private Map<String, Double> computeIdf(List<List<String>> corpus) {
         int N = corpus.size();
         Map<String, Integer> df = new HashMap<>();
@@ -81,14 +82,15 @@ public class TFRecommendService implements RecommendService {
 
         Map<String, Double> idf = new HashMap<>();
         for (Map.Entry<String, Integer> entry : df.entrySet()) {
-            String term   = entry.getKey();
-            int    count  = entry.getValue();
+            String term = entry.getKey();
+            int count = entry.getValue();
             idf.put(term, Math.log((N + 1.0) / (count + 1.0)) + 1.0);
         }
 
         return idf;
     }
 
+    //단어의 빈도를 게산
     private Map<String, Double> computeTf(List<String> tokens) {
         //비었으면 바로 반환
         if (tokens.isEmpty()) return Collections.emptyMap();
