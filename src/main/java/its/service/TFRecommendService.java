@@ -44,6 +44,13 @@ public class TFRecommendService implements RecommendService {
         Map<String, Double> idf = computeIdf(tokenized);
         idfTable.put(projectId, idf);
 
+        //각 문서의 TF-IDF 벡터 생성 및 색인 저장
+        List<IndexEntry> entries = new ArrayList<>();
+        for (int i = 0; i < issueList.size(); i++) {
+            Map<String, Double> tfidf = computeTfIdf(tokenized.get(i), idf);
+            entries.add(new IndexEntry(issueList.get(i).getFixer(), tfidf));
+        }
+        index.put(projectId, entries);
     }
 
     private static final class IndexEntry {
@@ -54,6 +61,8 @@ public class TFRecommendService implements RecommendService {
             this.fixer       = fixer;
             this.tfidfVector = tfidfVector;
         }
+
+        public String getFixer() {return fixer;}
     }
 
     //들어온 텍스트를 분리한다.
@@ -113,5 +122,16 @@ public class TFRecommendService implements RecommendService {
             tf.put(term, count / total);
         }
         return tf;
+    }
+
+    private Map<String, Double> computeTfIdf(List<String> tokens,
+                                             Map<String, Double> idf) {
+        Map<String, Double> tf = computeTf(tokens);
+        Map<String, Double> tfidf = new HashMap<>();
+        tf.forEach((term, tfScore) -> {
+            double idfScore = idf.getOrDefault(term, Math.log(2.0) + 1.0); // 미등록 term
+            tfidf.put(term, tfScore * idfScore);
+        });
+        return tfidf;
     }
 }
