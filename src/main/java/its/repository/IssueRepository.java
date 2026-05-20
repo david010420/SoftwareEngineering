@@ -22,4 +22,6 @@ public interface IssueRepository {
     default List<Project> projects() {
         return load().getProjects();
     }
+
+    List<Issue> findByProjectId(String id);
 }
