@@ -18,6 +18,10 @@ public class TFRecommendService implements RecommendService {
     /** 프로젝트별 단어 점수 저장 projectId, 단어, 점수 순서*/
     private final Map<String, Map<String, Double>> idfTable = new ConcurrentHashMap<>();
 
+    public TFRecommendService(IssueRepository issueRepository) {
+        this.issueRepository = issueRepository;
+    }
+
     @Override
     public List<String> recommendUser(String issueId, int topN) {
         return null;
