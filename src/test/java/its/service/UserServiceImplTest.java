@@ -106,4 +106,23 @@ class UserServiceImplTest {
 
         verify(userRepository).delete("dev1");
     }
+
+    // delete 실패 - 없는 대상
+    @Test
+    void delete_없는대상이면_예외() {
+        when(userRepository.findByUsername("nobody")).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class,
+                () -> userService.delete("admin", "nobody"));
+    }
+
+    // delete - 비ADMIN
+    @Test
+    void delete_비ADMIN이면_예외() {
+        UserAccount dev1 = new UserAccount("dev1", "pw", Role.DEV);
+        when(userRepository.findByUsername("dev1")).thenReturn(Optional.of(dev1));
+
+        assertThrows(RuntimeException.class,
+                () -> userService.delete("dev1", "dev2"));
+    }
 }
