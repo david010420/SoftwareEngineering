@@ -76,7 +76,7 @@ class UserServiceImplTest {
         assertEquals("dev1", result.getUsername());
     }
 
-    // login - 없는 유저
+    // login 실패 - 없는 유저
     @Test
     void login_없는유저이면_예외() {
         when(userRepository.findByUsername("nobody")).thenReturn(Optional.empty());
@@ -85,7 +85,7 @@ class UserServiceImplTest {
                 () -> userService.login("nobody", "pw"));
     }
 
-    // login - 틀린 비밀번호
+    // login 실패 - 틀린 비밀번호
     @Test
     void login_틀린비밀번호이면_예외() {
         UserAccount dev1 = new UserAccount("dev1", "correctpw", Role.DEV);
@@ -93,5 +93,17 @@ class UserServiceImplTest {
 
         assertThrows(RuntimeException.class,
                 () -> userService.login("dev1", "wrongpw"));
+    }
+
+    // delete 성공
+    @Test
+    void delete_성공() {
+        UserAccount dev1 = new UserAccount("dev1", "pw", Role.DEV);
+        when(userRepository.findByUsername("dev1")).thenReturn(Optional.of(dev1));
+        when(userRepository.delete("dev1")).thenReturn(dev1);
+
+        userService.delete("admin", "dev1");
+
+        verify(userRepository).delete("dev1");
     }
 }
