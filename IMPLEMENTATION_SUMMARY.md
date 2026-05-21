@@ -63,7 +63,10 @@ scripts/run-awt.ps1
 구현된 주요 기능은 다음과 같다.
 
 - 계정 추가
+- 프로젝트 추가
+  - admin 계정의 `Reports & Admin` 탭에서 `Add Project` 가능
 - 이슈 등록
+  - tester 계정의 `New Issue` 탭에서 프로젝트 선택 가능
   - `title`, `description` 필수
   - `reporter` 저장
   - `reported date` 자동 저장
@@ -75,6 +78,7 @@ scripts/run-awt.ps1
   - reporter
   - assignee
   - status
+  - 데모용 quick filter: All, NEW, Assigned to Me, Reported by Me, FIXED, RESOLVED
 - 이슈 상세 정보 확인
   - 제목, 설명, reporter, reported date, priority, status, assignee, fixer, comments
 - 코멘트 추가
@@ -160,7 +164,7 @@ Swing UI 시작 시 아이디/비밀번호 입력 기반 로그인 다이얼로�
 - 이슈 생성 시 reporter는 로그인한 계정으로 자동 저장
 - 댓글 작성자는 로그인한 계정으로 자동 저장
 - assign/fix/status 변경 actor도 로그인한 계정으로 자동 처리
-- `Add User`는 admin 계정만 가능
+- `Add User`, `Add Project`는 admin 계정만 가능
 - `Assign`, `Close`는 PL 계정만 가능
 - `Fix`는 dev 계정만 가능
 - `New Issue`, `Resolve`, `Reopen`은 tester 계정에서 표시
@@ -343,10 +347,8 @@ powershell -ExecutionPolicy Bypass -File scripts/run-awt.ps1
 
 현재 기능 데모 중심의 UI이므로, 최종 발표 전에 아래를 보완하면 좋다.
 
-- 로그인/현재 사용자 선택 기능
-- 프로젝트 추가 화면
-- priority 선택 UI
 - 상태 전이 권한 검증 강화
+- priority 선택 UI
 - 통계 그래프 시각화
 - AWT UI의 입력 기능 확대
 

@@ -6,6 +6,7 @@ import its.model.Comment;
 import its.model.Issue;
 import its.model.IssueStatus;
 import its.model.Priority;
+import its.model.Project;
 import its.model.Role;
 import its.model.UserAccount;
 import its.service.IssueSearchCriteria;
@@ -48,6 +49,7 @@ public class SwingIssueApp extends JFrame {
     private final JTextField reporterField = new JTextField();
     private final JTextField assigneeField = new JTextField();
     private final JComboBox<String> statusBox = new JComboBox<>();
+    private final JComboBox<Project> projectBox = new JComboBox<>();
     private final JLabel currentUserLabel = new JLabel("Not logged in");
     private final JLabel selectedTicketLabel = new JLabel("Selected ticket: none");
     private final List<RoleAction> roleActions = new ArrayList<>();
@@ -108,12 +110,31 @@ public class SwingIssueApp extends JFrame {
         searchButton.addActionListener(e -> search());
         filters.add(searchButton);
 
+        JPanel quickFilters = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 6));
+        quickFilters.setBorder(BorderFactory.createTitledBorder("Quick Filters"));
+        addQuickFilterButton(quickFilters, "All", () -> applyQuickFilter(null, null, null));
+        addQuickFilterButton(quickFilters, "NEW", () -> applyQuickFilter(IssueStatus.NEW, null, null));
+        addQuickFilterButton(quickFilters, "Assigned to Me", () -> {
+            requireLogin();
+            applyQuickFilter(null, null, currentUser.getUsername());
+        });
+        addQuickFilterButton(quickFilters, "Reported by Me", () -> {
+            requireLogin();
+            applyQuickFilter(null, currentUser.getUsername(), null);
+        });
+        addQuickFilterButton(quickFilters, "FIXED", () -> applyQuickFilter(IssueStatus.FIXED, null, null));
+        addQuickFilterButton(quickFilters, "RESOLVED", () -> applyQuickFilter(IssueStatus.RESOLVED, null, null));
+
         JPanel ticketListPanel = new JPanel(new BorderLayout(6, 6));
         ticketListPanel.setBorder(BorderFactory.createTitledBorder("Tickets"));
         ticketListPanel.add(new JScrollPane(issueList), BorderLayout.CENTER);
 
+        JPanel filterPanel = new JPanel(new BorderLayout(6, 6));
+        filterPanel.add(filters, BorderLayout.NORTH);
+        filterPanel.add(quickFilters, BorderLayout.CENTER);
+
         JPanel leftPanel = new JPanel(new BorderLayout(8, 8));
-        leftPanel.add(filters, BorderLayout.NORTH);
+        leftPanel.add(filterPanel, BorderLayout.NORTH);
         leftPanel.add(ticketListPanel, BorderLayout.CENTER);
 
         JPanel rightPanel = buildTicketDetailPanel();
@@ -133,9 +154,12 @@ public class SwingIssueApp extends JFrame {
         descriptionField.setWrapStyleWord(true);
         JComboBox<Priority> priorityBox = new JComboBox<>(Priority.values());
         priorityBox.setSelectedItem(Priority.MAJOR);
+        refreshProjectChoices();
 
         JPanel form = new JPanel(new BorderLayout(8, 8));
-        JPanel fields = new JPanel(new GridLayout(2, 2, 6, 6));
+        JPanel fields = new JPanel(new GridLayout(3, 2, 6, 6));
+        fields.add(new JLabel("Project"));
+        fields.add(projectBox);
         fields.add(new JLabel("Title"));
         fields.add(titleField);
         fields.add(new JLabel("Priority"));
@@ -151,7 +175,11 @@ public class SwingIssueApp extends JFrame {
             if (title.isBlank() || description.isBlank()) {
                 throw new IllegalStateException("Title and description are required.");
             }
-            controller.createIssue("project1", title, description, currentUser.getUsername(), (Priority) priorityBox.getSelectedItem());
+            Project selectedProject = (Project) projectBox.getSelectedItem();
+            if (selectedProject == null) {
+                throw new IllegalStateException("Project is required.");
+            }
+            controller.createIssue(selectedProject.getName(), title, description, currentUser.getUsername(), (Priority) priorityBox.getSelectedItem());
             titleField.setText("");
             descriptionField.setText("");
             refreshIssues(controller.issues());
@@ -188,6 +216,7 @@ public class SwingIssueApp extends JFrame {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         actions.setBorder(BorderFactory.createTitledBorder("Reports & Admin"));
         addRoleButton(actions, "Add User", this::addUser, Role.ADMIN);
+        addRoleButton(actions, "Add Project", this::addProject, Role.ADMIN);
         addRoleButton(actions, "Recommend Assignee", this::recommend, Role.PL);
         addRoleButton(actions, "Stats", this::stats, Role.ADMIN, Role.PL);
 
@@ -248,6 +277,12 @@ public class SwingIssueApp extends JFrame {
         JButton button = new JButton(text);
         button.addActionListener(e -> runSafely(action));
         roleActions.add(new RoleAction(button, allowedRoles));
+        panel.add(button);
+    }
+
+    private void addQuickFilterButton(JPanel panel, String text, Runnable action) {
+        JButton button = new JButton(text);
+        button.addActionListener(e -> runSafely(action));
         panel.add(button);
     }
 
@@ -369,6 +404,14 @@ public class SwingIssueApp extends JFrame {
                 .status(status)));
     }
 
+    private void applyQuickFilter(IssueStatus status, String reporter, String assignee) {
+        queryField.setText("");
+        reporterField.setText(reporter == null ? "" : reporter);
+        assigneeField.setText(assignee == null ? "" : assignee);
+        statusBox.setSelectedItem(status == null ? "" : status.name());
+        search();
+    }
+
     private void addUser() {
         requireRole(Role.ADMIN, "Only admin can add users.");
         String username = input("Username");
@@ -380,6 +423,28 @@ public class SwingIssueApp extends JFrame {
         if (role != null) {
             controller.addUser(username, role);
             message("User added.");
+        }
+    }
+
+    private void addProject() {
+        requireRole(Role.ADMIN, "Only admin can add projects.");
+        String projectName = input("Project name");
+        if (projectName == null || projectName.isBlank()) {
+            return;
+        }
+        controller.addProject(projectName);
+        refreshProjectChoices();
+        message("Project added.");
+    }
+
+    private void refreshProjectChoices() {
+        Project selected = (Project) projectBox.getSelectedItem();
+        projectBox.removeAllItems();
+        for (Project project : controller.projects()) {
+            projectBox.addItem(project);
+            if (selected != null && selected.getName().equalsIgnoreCase(project.getName())) {
+                projectBox.setSelectedItem(project);
+            }
         }
     }
 

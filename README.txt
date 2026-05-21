@@ -18,9 +18,10 @@ SE 2026 Spring Term Project - Issue Management System
 
 4. 구현 기능
 - 계정 추가: admin, PL, dev, tester 역할 지원
-- 프로젝트 추가: 서비스 계층에서 지원, 현재 데모 프로젝트는 project1
-- 이슈 등록: title, description 필수, reporter와 reported date 자동 저장
+- 프로젝트 추가: admin 계정의 Reports & Admin 탭에서 프로젝트 추가 가능
+- 이슈 등록: tester 계정의 New Issue 탭에서 프로젝트 선택 가능, title/description 필수, reporter와 reported date 자동 저장
 - 이슈 브라우즈/검색: query, reporter, assignee, status 기준 검색
+- 빠른 필터: All, NEW, Assigned to Me, Reported by Me, FIXED, RESOLVED
 - 이슈 상세 보기: 필드와 comments history 확인
 - 코멘트 추가: 작성자, 작성 시간, 메시지를 누적 보관
 - 이슈 배정 및 상태 변경: new, assigned, fixed, resolved, closed, reopened 흐름 지원
