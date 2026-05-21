@@ -170,6 +170,7 @@ Swing UI 시작 시 아이디/비밀번호 입력 기반 로그인 다이얼로�
 - `New Issue`, `Resolve`, `Reopen`은 tester 계정에서 표시
 - `Recommend Assignee`는 PL 계정에서 표시
 - `Stats`는 admin/PL 계정에서 표시
+- 추천 결과와 통계 결과는 `Reports & Admin` 탭 안의 결과 영역에 표시
 
 ### 1.10 테스트
 
@@ -361,6 +362,7 @@ powershell -ExecutionPolicy Bypass -File scripts/run-awt.ps1
 - [ ] 소개/데모 영상 제작
 - [ ] JUnit 테스트 코드 보완
 - [ ] Swing UI 로그인 화면 및 실행 화면 캡처
+- [ ] Recommendation Result 및 Statistics Result 화면 캡처
 - [ ] AWT UI 실행 캡처
 - [ ] 테스트 실행 결과 캡처
 - [ ] GitHub commit history 캡처

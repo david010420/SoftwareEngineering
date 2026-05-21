@@ -27,6 +27,7 @@ SE 2026 Spring Term Project - Issue Management System
 - 이슈 배정 및 상태 변경: new, assigned, fixed, resolved, closed, reopened 흐름 지원
 - 통계: 일별/월별 이슈 발생 수 표시
 - 자동 추천: resolved/closed 이슈의 title/description 유사도 기반 fixer 상위 3명 추천
+- Reports & Admin 탭에서 추천 결과와 통계 결과를 화면 안에 표시
 - 두 UI: Swing UI와 AWT UI가 같은 controller/service/model/repository를 재사용
 - Swing UI 로그인: 앱 시작 시 아이디/비밀번호 직접 입력, 데모 비밀번호는 모두 1234, 로그인 성공 후 메인 화면 표시, 실행 중 Switch User 가능
 - Swing UI 권한 표시: 로그인한 role이 사용할 수 있는 탭과 버튼만 화면에 표시

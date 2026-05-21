@@ -52,6 +52,8 @@ public class SwingIssueApp extends JFrame {
     private final JComboBox<Project> projectBox = new JComboBox<>();
     private final JLabel currentUserLabel = new JLabel("Not logged in");
     private final JLabel selectedTicketLabel = new JLabel("Selected ticket: none");
+    private final JTextArea recommendationArea = new JTextArea();
+    private final JTextArea statsArea = new JTextArea();
     private final List<RoleAction> roleActions = new ArrayList<>();
     private JTabbedPane tabs;
     private JPanel browseTab;
@@ -220,9 +222,26 @@ public class SwingIssueApp extends JFrame {
         addRoleButton(actions, "Recommend Assignee", this::recommend, Role.PL);
         addRoleButton(actions, "Stats", this::stats, Role.ADMIN, Role.PL);
 
+        configureReadOnly(recommendationArea);
+        configureReadOnly(statsArea);
+        recommendationArea.setText("Select a ticket and click Recommend Assignee.");
+        statsArea.setText("Click Stats to view issue counts.");
+
+        JPanel recommendationPanel = new JPanel(new BorderLayout());
+        recommendationPanel.setBorder(BorderFactory.createTitledBorder("Recommendation Result"));
+        recommendationPanel.add(new JScrollPane(recommendationArea), BorderLayout.CENTER);
+
+        JPanel statsPanel = new JPanel(new BorderLayout());
+        statsPanel.setBorder(BorderFactory.createTitledBorder("Statistics Result"));
+        statsPanel.add(new JScrollPane(statsArea), BorderLayout.CENTER);
+
+        JSplitPane resultSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, recommendationPanel, statsPanel);
+        resultSplit.setResizeWeight(0.5);
+
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         panel.add(actions, BorderLayout.NORTH);
+        panel.add(resultSplit, BorderLayout.CENTER);
         return panel;
     }
 
@@ -516,7 +535,20 @@ public class SwingIssueApp extends JFrame {
         Issue issue = selectedIssue();
         if (issue != null) {
             List<String> candidates = controller.recommendAssignees(issue.getId());
-            message(candidates.isEmpty() ? "No candidate yet." : "Best candidate: " + String.join(", ", candidates));
+            StringBuilder builder = new StringBuilder();
+            builder.append("Selected issue: #").append(issue.getId()).append(" ").append(issue.getTitle()).append('\n');
+            builder.append("Status: ").append(issue.getStatus()).append('\n');
+            builder.append("Priority: ").append(issue.getPriority()).append("\n\n");
+            if (candidates.isEmpty()) {
+                builder.append("No candidate yet.");
+            } else {
+                builder.append("Best candidates:\n");
+                for (int i = 0; i < candidates.size(); i++) {
+                    builder.append(i + 1).append(". ").append(candidates.get(i)).append('\n');
+                }
+            }
+            recommendationArea.setText(builder.toString());
+            recommendationArea.setCaretPosition(0);
         }
     }
 
@@ -525,7 +557,8 @@ public class SwingIssueApp extends JFrame {
         controller.statistics().getDailyCounts().forEach((day, count) -> builder.append(day).append(": ").append(count).append('\n'));
         builder.append("\nMonthly\n");
         controller.statistics().getMonthlyCounts().forEach((month, count) -> builder.append(month).append(": ").append(count).append('\n'));
-        message(builder.toString());
+        statsArea.setText(builder.toString());
+        statsArea.setCaretPosition(0);
     }
 
     private void refreshIssues(List<Issue> issues) {
