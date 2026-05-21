@@ -58,12 +58,40 @@ class UserServiceImplTest {
 
     // 중복 username이면 예외
     @Test
-    void register_중복username이면_예외() {
+    void register_중복_username이면_예외() {
         when(userRepository.existsByUsername("dev1")).thenReturn(true);
 
         assertThrows(RuntimeException.class,
                 () -> userService.register("admin", "dev1", "pass2", Role.DEV));
     }
 
+    // login 성공
+    @Test
+    void login_성공() {
+        UserAccount dev1 = new UserAccount("dev1", "mypass", Role.DEV);
+        when(userRepository.findByUsername("dev1")).thenReturn(Optional.of(dev1));
 
+        UserAccount result = userService.login("dev1", "mypass");
+
+        assertEquals("dev1", result.getUsername());
+    }
+
+    // login - 없는 유저
+    @Test
+    void login_없는유저이면_예외() {
+        when(userRepository.findByUsername("nobody")).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class,
+                () -> userService.login("nobody", "pw"));
+    }
+
+    // login - 틀린 비밀번호
+    @Test
+    void login_틀린비밀번호이면_예외() {
+        UserAccount dev1 = new UserAccount("dev1", "correctpw", Role.DEV);
+        when(userRepository.findByUsername("dev1")).thenReturn(Optional.of(dev1));
+
+        assertThrows(RuntimeException.class,
+                () -> userService.login("dev1", "wrongpw"));
+    }
 }
