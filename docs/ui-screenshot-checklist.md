@@ -40,8 +40,8 @@
 - Quick Filters
   - All
   - NEW
-  - Assigned to Me
-  - Reported by Me
+  - Mine
+  - Reported
   - FIXED
   - RESOLVED
 - Ticket Detail
@@ -56,7 +56,7 @@
 - Tester가 코멘트 추가
 - PL이 NEW 필터로 이슈 검색
 - PL이 dev에게 assign
-- Dev가 Assigned to Me로 이슈 검색
+- Dev가 Mine 필터로 이슈 검색
 - Dev가 Fix 처리
 - Tester가 FIXED 필터로 이슈 검색
 - Tester가 Resolve 처리

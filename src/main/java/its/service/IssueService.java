@@ -41,10 +41,11 @@ public class IssueService {
     }
 
     public UserAccount login(String username, String password) {
-        if (!DEMO_PASSWORD.equals(password)) {
+        UserAccount user = requireUser(repository.load(), username);
+        if (!user.checkPassword(password)) {
             throw new IllegalArgumentException("Invalid username or password.");
         }
-        return requireUser(repository.load(), username);
+        return user;
     }
 
     public List<Issue> listIssues() {
@@ -75,7 +76,7 @@ public class IssueService {
                 .ifPresent(u -> {
                     throw new IllegalArgumentException("user already exists: " + username);
                 });
-        UserAccount user = new UserAccount(username, role);
+        UserAccount user = new UserAccount(username, DEMO_PASSWORD, role);
         store.getUsers().add(user);
         repository.save(store);
         return user;
@@ -201,14 +202,14 @@ public class IssueService {
             return;
         }
         store.getProjects().add(new Project("project1"));
-        store.getUsers().add(new UserAccount("admin", Role.ADMIN));
-        store.getUsers().add(new UserAccount("PL1", Role.PL));
-        store.getUsers().add(new UserAccount("PL2", Role.PL));
+        store.getUsers().add(new UserAccount("admin", DEMO_PASSWORD, Role.ADMIN));
+        store.getUsers().add(new UserAccount("PL1", DEMO_PASSWORD, Role.PL));
+        store.getUsers().add(new UserAccount("PL2", DEMO_PASSWORD, Role.PL));
         for (int i = 1; i <= 10; i++) {
-            store.getUsers().add(new UserAccount("dev" + i, Role.DEV));
+            store.getUsers().add(new UserAccount("dev" + i, DEMO_PASSWORD, Role.DEV));
         }
         for (int i = 1; i <= 5; i++) {
-            store.getUsers().add(new UserAccount("tester" + i, Role.TESTER));
+            store.getUsers().add(new UserAccount("tester" + i, DEMO_PASSWORD, Role.TESTER));
         }
         Issue login = new Issue(store.nextIssueId(), "project1", "Login fails after password reset",
                 "Users cannot sign in after resetting a password.", "tester1", LocalDateTime.now().minusDays(3), Priority.CRITICAL);

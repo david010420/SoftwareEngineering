@@ -31,12 +31,12 @@ scripts/run-awt.ps1
 요구사항의 UI와 응용 로직 분리 조건을 만족하도록 계층을 분리했다.
 
 - `model`: `Issue`, `Comment`, `UserAccount`, `Project`, `Role`, `Priority`, `IssueStatus`
-- `repository`: `FileIssueRepository`, `IssueStore`
-- `service`: `IssueService`, `IssueSearchCriteria`, `IssueStatistics`
-- `controller`: `IssueController`
+- `repository`: `FileIssueRepository`, `FileUserRepository`, `IssueStore`
+- `service`: `IssueService`, `UserService`, `UserServiceImpl`, `IssueSearchCriteria`, `IssueStatistics`
+- `controller`: `IssueController`, `UserController`
 - `ui`: `SwingIssueApp`, `AwtIssueApp`
 
-두 UI는 비즈니스 로직을 직접 갖지 않고 동일한 `IssueController`를 호출한다. 따라서 UI를 바꾸더라도 model/service/repository 계층은 재사용 가능하다.
+두 UI는 비즈니스 로직을 직접 갖지 않고 controller를 통해 service를 호출한다. 이슈 기능은 `IssueController`, 사용자 기능은 `UserController`를 사용하므로 UI를 바꾸더라도 model/service/repository 계층은 재사용 가능하다.
 
 ### 1.3 영속 저장
 
@@ -78,7 +78,7 @@ scripts/run-awt.ps1
   - reporter
   - assignee
   - status
-  - 데모용 quick filter: All, NEW, Assigned to Me, Reported by Me, FIXED, RESOLVED
+  - 데모용 quick filter: All, NEW, Mine, Reported, FIXED, RESOLVED
 - 이슈 상세 정보 확인
   - 제목, 설명, reporter, reported date, priority, status, assignee, fixer, comments
 - 코멘트 추가

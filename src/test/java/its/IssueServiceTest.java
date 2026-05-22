@@ -1,13 +1,16 @@
 package its;
 
 import its.controller.IssueController;
+import its.controller.UserController;
 import its.model.Issue;
 import its.model.IssueStatus;
 import its.model.Priority;
 import its.model.Role;
+import its.repository.FileUserRepository;
 import its.repository.FileIssueRepository;
 import its.service.IssueSearchCriteria;
 import its.service.IssueService;
+import its.service.UserServiceImpl;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,13 +20,18 @@ public class IssueServiceTest {
         Path testStore = Path.of("data", "test-issues.store");
         Files.deleteIfExists(testStore);
 
-        IssueController controller = new IssueController(new IssueService(new FileIssueRepository(testStore)));
+        FileIssueRepository issueRepository = new FileIssueRepository(testStore);
+        IssueController controller = new IssueController(new IssueService(issueRepository));
+        UserController userController = new UserController(new UserServiceImpl(new FileUserRepository(issueRepository)));
         controller.addProject("project1");
+        controller.addUser("admin", Role.ADMIN);
         controller.addUser("PL1", Role.PL);
         controller.addUser("dev1", Role.DEV);
         controller.addUser("tester1", Role.TESTER);
-        assertEquals("tester1", controller.login("tester1", "1234").getUsername(), "login succeeds");
-        assertThrows(() -> controller.login("tester1", "wrong"), "login rejects invalid password");
+        assertEquals("tester1", userController.login("tester1", "1234").getUsername(), "user login succeeds");
+        assertThrows(() -> userController.login("tester1", "wrong"), "user login rejects invalid password");
+        userController.register("admin", "tester2", "1234", Role.TESTER);
+        assertEquals("tester2", userController.findByUsername("tester2").getUsername(), "user register succeeds");
 
         Issue issue = controller.createIssue("project1", "Login error", "Cannot login with valid account", "tester1", Priority.MAJOR);
         assertEquals(IssueStatus.NEW, issue.getStatus(), "new issue status");

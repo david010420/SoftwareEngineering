@@ -2,6 +2,7 @@ package its.ui.swing;
 
 import its.AppFactory;
 import its.controller.IssueController;
+import its.controller.UserController;
 import its.model.Comment;
 import its.model.Issue;
 import its.model.IssueStatus;
@@ -29,6 +30,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -39,6 +41,7 @@ import java.util.List;
 
 public class SwingIssueApp extends JFrame {
     private final IssueController controller;
+    private final UserController userController;
     private final DefaultListModel<Issue> issueListModel = new DefaultListModel<>();
     private final JList<Issue> issueList = new JList<>(issueListModel);
     private final JLabel ticketTitleLabel = new JLabel("No ticket selected");
@@ -62,21 +65,24 @@ public class SwingIssueApp extends JFrame {
     private JPanel reportsTab;
     private UserAccount currentUser;
 
-    public SwingIssueApp(IssueController controller) {
+    public SwingIssueApp(IssueController controller, UserController userController) {
         super("Issue Management System - Swing");
         this.controller = controller;
+        this.userController = userController;
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setSize(1100, 720);
+        setMinimumSize(new Dimension(1050, 720));
+        setSize(1280, 820);
         buildUi();
         refreshIssues(controller.issues());
     }
 
     private void buildUi() {
-        JPanel loginPanel = new JPanel(new GridLayout(1, 2, 6, 6));
+        JPanel loginPanel = new JPanel(new BorderLayout(8, 0));
         JButton switchUserButton = new JButton("Switch User");
         switchUserButton.addActionListener(e -> switchUser());
-        loginPanel.add(currentUserLabel);
-        loginPanel.add(switchUserButton);
+        currentUserLabel.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+        loginPanel.add(currentUserLabel, BorderLayout.CENTER);
+        loginPanel.add(switchUserButton, BorderLayout.EAST);
 
         tabs = new JTabbedPane();
         browseTab = buildBrowseTab();
@@ -112,15 +118,15 @@ public class SwingIssueApp extends JFrame {
         searchButton.addActionListener(e -> search());
         filters.add(searchButton);
 
-        JPanel quickFilters = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 6));
+        JPanel quickFilters = new JPanel(new GridLayout(3, 2, 6, 6));
         quickFilters.setBorder(BorderFactory.createTitledBorder("Quick Filters"));
         addQuickFilterButton(quickFilters, "All", () -> applyQuickFilter(null, null, null));
         addQuickFilterButton(quickFilters, "NEW", () -> applyQuickFilter(IssueStatus.NEW, null, null));
-        addQuickFilterButton(quickFilters, "Assigned to Me", () -> {
+        addQuickFilterButton(quickFilters, "Mine", () -> {
             requireLogin();
             applyQuickFilter(null, null, currentUser.getUsername());
         });
-        addQuickFilterButton(quickFilters, "Reported by Me", () -> {
+        addQuickFilterButton(quickFilters, "Reported", () -> {
             requireLogin();
             applyQuickFilter(null, currentUser.getUsername(), null);
         });
@@ -141,8 +147,11 @@ public class SwingIssueApp extends JFrame {
 
         JPanel rightPanel = buildTicketDetailPanel();
         issueList.addListSelectionListener(e -> showSelectedIssue());
+        leftPanel.setMinimumSize(new Dimension(380, 300));
+        rightPanel.setMinimumSize(new Dimension(560, 300));
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
-        split.setDividerLocation(330);
+        split.setResizeWeight(0.34);
+        split.setDividerLocation(400);
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.add(split, BorderLayout.CENTER);
@@ -209,8 +218,9 @@ public class SwingIssueApp extends JFrame {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         selectedTicketLabel.setBorder(BorderFactory.createEmptyBorder(0, 4, 8, 4));
+        selectedTicketLabel.setPreferredSize(new Dimension(800, 28));
         panel.add(selectedTicketLabel, BorderLayout.NORTH);
-        panel.add(actions, BorderLayout.CENTER);
+        panel.add(new JScrollPane(actions), BorderLayout.CENTER);
         return panel;
     }
 
@@ -240,7 +250,9 @@ public class SwingIssueApp extends JFrame {
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        panel.add(actions, BorderLayout.NORTH);
+        JScrollPane actionsScroll = new JScrollPane(actions);
+        actionsScroll.setPreferredSize(new Dimension(1000, 82));
+        panel.add(actionsScroll, BorderLayout.NORTH);
         panel.add(resultSplit, BorderLayout.CENTER);
         return panel;
     }
@@ -301,6 +313,7 @@ public class SwingIssueApp extends JFrame {
 
     private void addQuickFilterButton(JPanel panel, String text, Runnable action) {
         JButton button = new JButton(text);
+        button.setFocusable(false);
         button.addActionListener(e -> runSafely(action));
         panel.add(button);
     }
@@ -324,7 +337,7 @@ public class SwingIssueApp extends JFrame {
     }
 
     private UserAccount selectUser(String title, boolean required) {
-        if (controller.users().isEmpty()) {
+        if (userController.findAll().isEmpty()) {
             message("No account exists. Demo data should create accounts automatically.");
             return null;
         }
@@ -345,7 +358,7 @@ public class SwingIssueApp extends JFrame {
                 return null;
             }
             try {
-                return controller.login(usernameField.getText(), new String(passwordField.getPassword()));
+                return userController.login(usernameField.getText(), new String(passwordField.getPassword()));
             } catch (RuntimeException e) {
                 message(e.getMessage());
                 passwordField.setText("");
@@ -440,8 +453,8 @@ public class SwingIssueApp extends JFrame {
         Role role = (Role) JOptionPane.showInputDialog(this, "Role", "Add User",
                 JOptionPane.PLAIN_MESSAGE, null, Role.values(), Role.DEV);
         if (role != null) {
-            controller.addUser(username, role);
-            message("User added.");
+            userController.register(currentUser.getUsername(), username, "1234", role);
+            message("User added. Default password is 1234.");
         }
     }
 
@@ -667,7 +680,8 @@ public class SwingIssueApp extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            SwingIssueApp app = new SwingIssueApp(AppFactory.createController());
+            AppFactory.Controllers controllers = AppFactory.createControllers();
+            SwingIssueApp app = new SwingIssueApp(controllers.issueController(), controllers.userController());
             if (app.loginBeforeShow()) {
                 app.setVisible(true);
             } else {
