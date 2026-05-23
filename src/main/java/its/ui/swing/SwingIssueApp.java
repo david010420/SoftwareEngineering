@@ -13,21 +13,22 @@ import its.model.UserAccount;
 import its.service.IssueSearchCriteria;
 
 import javax.swing.BorderFactory;
-import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
+import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -42,13 +43,21 @@ import java.util.List;
 public class SwingIssueApp extends JFrame {
     private final IssueController controller;
     private final UserController userController;
-    private final DefaultListModel<Issue> issueListModel = new DefaultListModel<>();
-    private final JList<Issue> issueList = new JList<>(issueListModel);
+    private final DefaultTableModel issueTableModel = new DefaultTableModel(
+            new String[]{"ID", "Status", "Priority", "Title", "Assignee", "Reporter", "Updated"}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable issueTable = new JTable(issueTableModel);
+    private final List<Issue> visibleIssues = new ArrayList<>();
     private final JLabel ticketTitleLabel = new JLabel("No ticket selected");
     private final JTextArea ticketPropertiesArea = new JTextArea();
     private final JTextArea descriptionArea = new JTextArea();
     private final JTextArea commentsArea = new JTextArea();
     private final JTextField queryField = new JTextField();
+    private final JTextField projectFilterField = new JTextField();
     private final JTextField reporterField = new JTextField();
     private final JTextField assigneeField = new JTextField();
     private final JComboBox<String> statusBox = new JComboBox<>();
@@ -99,12 +108,14 @@ public class SwingIssueApp extends JFrame {
     }
 
     private JPanel buildBrowseTab() {
-        JPanel filters = new JPanel(new GridLayout(5, 2, 6, 6));
+        JPanel filters = new JPanel(new GridLayout(6, 2, 6, 6));
         filters.setBorder(BorderFactory.createTitledBorder("Ticket Query"));
         statusBox.addItem("");
         for (IssueStatus status : IssueStatus.values()) {
             statusBox.addItem(status.name());
         }
+        filters.add(new JLabel("Project"));
+        filters.add(projectFilterField);
         filters.add(new JLabel("Query"));
         filters.add(queryField);
         filters.add(new JLabel("Reporter"));
@@ -118,24 +129,27 @@ public class SwingIssueApp extends JFrame {
         searchButton.addActionListener(e -> search());
         filters.add(searchButton);
 
-        JPanel quickFilters = new JPanel(new GridLayout(3, 2, 6, 6));
+        JPanel quickFilters = new JPanel(new GridLayout(4, 2, 6, 6));
         quickFilters.setBorder(BorderFactory.createTitledBorder("Quick Filters"));
         addQuickFilterButton(quickFilters, "All", () -> applyQuickFilter(null, null, null));
-        addQuickFilterButton(quickFilters, "NEW", () -> applyQuickFilter(IssueStatus.NEW, null, null));
-        addQuickFilterButton(quickFilters, "Mine", () -> {
+        addQuickFilterButton(quickFilters, "Open", () -> applyOpenFilter());
+        addQuickFilterButton(quickFilters, "New", () -> applyQuickFilter(IssueStatus.NEW, null, null));
+        addQuickFilterButton(quickFilters, "Assigned to Me", () -> {
             requireLogin();
             applyQuickFilter(null, null, currentUser.getUsername());
         });
-        addQuickFilterButton(quickFilters, "Reported", () -> {
+        addQuickFilterButton(quickFilters, "Reported by Me", () -> {
             requireLogin();
             applyQuickFilter(null, currentUser.getUsername(), null);
         });
-        addQuickFilterButton(quickFilters, "FIXED", () -> applyQuickFilter(IssueStatus.FIXED, null, null));
-        addQuickFilterButton(quickFilters, "RESOLVED", () -> applyQuickFilter(IssueStatus.RESOLVED, null, null));
+        addQuickFilterButton(quickFilters, "Fixed", () -> applyQuickFilter(IssueStatus.FIXED, null, null));
+        addQuickFilterButton(quickFilters, "Resolved", () -> applyQuickFilter(IssueStatus.RESOLVED, null, null));
+        addQuickFilterButton(quickFilters, "Closed", () -> applyQuickFilter(IssueStatus.CLOSED, null, null));
 
         JPanel ticketListPanel = new JPanel(new BorderLayout(6, 6));
         ticketListPanel.setBorder(BorderFactory.createTitledBorder("Tickets"));
-        ticketListPanel.add(new JScrollPane(issueList), BorderLayout.CENTER);
+        configureIssueTable();
+        ticketListPanel.add(new JScrollPane(issueTable), BorderLayout.CENTER);
 
         JPanel filterPanel = new JPanel(new BorderLayout(6, 6));
         filterPanel.add(filters, BorderLayout.NORTH);
@@ -146,7 +160,11 @@ public class SwingIssueApp extends JFrame {
         leftPanel.add(ticketListPanel, BorderLayout.CENTER);
 
         JPanel rightPanel = buildTicketDetailPanel();
-        issueList.addListSelectionListener(e -> showSelectedIssue());
+        issueTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                showSelectedIssue();
+            }
+        });
         leftPanel.setMinimumSize(new Dimension(380, 300));
         rightPanel.setMinimumSize(new Dimension(560, 300));
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
@@ -207,7 +225,7 @@ public class SwingIssueApp extends JFrame {
 
     private JPanel buildWorkflowTab() {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-        actions.setBorder(BorderFactory.createTitledBorder("Ticket Workflow"));
+        actions.setBorder(BorderFactory.createTitledBorder("Issue Actions"));
         addRoleButton(actions, "Comment", this::addComment, Role.ADMIN, Role.PL, Role.DEV, Role.TESTER);
         addRoleButton(actions, "Assign", this::assign, Role.PL);
         addRoleButton(actions, "Fix", this::fix, Role.DEV);
@@ -225,12 +243,15 @@ public class SwingIssueApp extends JFrame {
     }
 
     private JPanel buildReportsTab() {
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-        actions.setBorder(BorderFactory.createTitledBorder("Reports & Admin"));
-        addRoleButton(actions, "Add User", this::addUser, Role.ADMIN);
-        addRoleButton(actions, "Add Project", this::addProject, Role.ADMIN);
-        addRoleButton(actions, "Recommend Assignee", this::recommend, Role.PL);
-        addRoleButton(actions, "Stats", this::stats, Role.ADMIN, Role.PL);
+        JPanel adminActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        adminActions.setBorder(BorderFactory.createTitledBorder("Admin"));
+        addRoleButton(adminActions, "Add User", this::addUser, Role.ADMIN);
+        addRoleButton(adminActions, "Add Project", this::addProject, Role.ADMIN);
+
+        JPanel reportActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        reportActions.setBorder(BorderFactory.createTitledBorder("Reports"));
+        addRoleButton(reportActions, "Recommend Assignee", this::recommend, Role.PL);
+        addRoleButton(reportActions, "Stats", this::stats, Role.ADMIN, Role.PL);
 
         configureReadOnly(recommendationArea);
         configureReadOnly(statsArea);
@@ -250,6 +271,9 @@ public class SwingIssueApp extends JFrame {
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        JPanel actions = new JPanel(new GridLayout(1, 2, 8, 8));
+        actions.add(adminActions);
+        actions.add(reportActions);
         JScrollPane actionsScroll = new JScrollPane(actions);
         actionsScroll.setPreferredSize(new Dimension(1000, 82));
         panel.add(actionsScroll, BorderLayout.NORTH);
@@ -289,6 +313,19 @@ public class SwingIssueApp extends JFrame {
         detailPanel.add(ticketTitleLabel, BorderLayout.NORTH);
         detailPanel.add(detailBody, BorderLayout.CENTER);
         return detailPanel;
+    }
+
+    private void configureIssueTable() {
+        issueTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        issueTable.setAutoCreateRowSorter(true);
+        issueTable.setRowHeight(24);
+        issueTable.getColumnModel().getColumn(0).setPreferredWidth(50);
+        issueTable.getColumnModel().getColumn(1).setPreferredWidth(95);
+        issueTable.getColumnModel().getColumn(2).setPreferredWidth(90);
+        issueTable.getColumnModel().getColumn(3).setPreferredWidth(260);
+        issueTable.getColumnModel().getColumn(4).setPreferredWidth(95);
+        issueTable.getColumnModel().getColumn(5).setPreferredWidth(95);
+        issueTable.getColumnModel().getColumn(6).setPreferredWidth(135);
     }
 
     private void configureReadOnly(JTextArea area) {
@@ -391,7 +428,7 @@ public class SwingIssueApp extends JFrame {
             tabs.addTab("New Issue", newIssueTab);
         }
         if (currentUser != null && hasAnyActionFor(workflowTab, currentUser.getRole())) {
-            tabs.addTab("Workflow", workflowTab);
+            tabs.addTab("Issue Actions", workflowTab);
         }
         if (currentUser != null && hasAnyActionFor(reportsTab, currentUser.getRole())) {
             tabs.addTab("Reports & Admin", reportsTab);
@@ -430,6 +467,7 @@ public class SwingIssueApp extends JFrame {
         IssueStatus status = statusBox.getSelectedItem() == null || statusBox.getSelectedItem().toString().isBlank()
                 ? null : IssueStatus.valueOf(statusBox.getSelectedItem().toString());
         refreshIssues(controller.search(new IssueSearchCriteria()
+                .projectName(projectFilterField.getText())
                 .query(queryField.getText())
                 .reporter(reporterField.getText())
                 .assignee(assigneeField.getText())
@@ -437,11 +475,23 @@ public class SwingIssueApp extends JFrame {
     }
 
     private void applyQuickFilter(IssueStatus status, String reporter, String assignee) {
+        projectFilterField.setText("");
         queryField.setText("");
         reporterField.setText(reporter == null ? "" : reporter);
         assigneeField.setText(assignee == null ? "" : assignee);
         statusBox.setSelectedItem(status == null ? "" : status.name());
         search();
+    }
+
+    private void applyOpenFilter() {
+        projectFilterField.setText("");
+        queryField.setText("");
+        reporterField.setText("");
+        assigneeField.setText("");
+        statusBox.setSelectedItem("");
+        refreshIssues(controller.issues().stream()
+                .filter(issue -> issue.getStatus() != IssueStatus.CLOSED && issue.getStatus() != IssueStatus.RESOLVED)
+                .toList());
     }
 
     private void addUser() {
@@ -566,21 +616,39 @@ public class SwingIssueApp extends JFrame {
     }
 
     private void stats() {
-        StringBuilder builder = new StringBuilder("Daily\n");
-        controller.statistics().getDailyCounts().forEach((day, count) -> builder.append(day).append(": ").append(count).append('\n'));
-        builder.append("\nMonthly\n");
-        controller.statistics().getMonthlyCounts().forEach((month, count) -> builder.append(month).append(": ").append(count).append('\n'));
+        StringBuilder builder = new StringBuilder();
+        builder.append("Daily Issue Counts\n");
+        builder.append(String.format("%-14s %s%n", "Date", "Count"));
+        builder.append("----------------------\n");
+        controller.statistics().getDailyCounts().forEach((day, count) ->
+                builder.append(String.format("%-14s %d%n", day, count)));
+        builder.append("\nMonthly Issue Counts\n");
+        builder.append(String.format("%-14s %s%n", "Month", "Count"));
+        builder.append("----------------------\n");
+        controller.statistics().getMonthlyCounts().forEach((month, count) ->
+                builder.append(String.format("%-14s %d%n", month, count)));
         statsArea.setText(builder.toString());
         statsArea.setCaretPosition(0);
     }
 
     private void refreshIssues(List<Issue> issues) {
-        issueListModel.clear();
+        visibleIssues.clear();
+        visibleIssues.addAll(issues);
+        issueTableModel.setRowCount(0);
         for (Issue issue : issues) {
-            issueListModel.addElement(issue);
+            issueTableModel.addRow(new Object[]{
+                    issue.getId(),
+                    issue.getStatus(),
+                    issue.getPriority(),
+                    issue.getTitle(),
+                    value(issue.getAssignee()),
+                    issue.getReporter(),
+                    latestActivity(issue)
+            });
         }
-        if (!issueListModel.isEmpty()) {
-            issueList.setSelectedIndex(0);
+        if (!visibleIssues.isEmpty()) {
+            issueTable.setRowSelectionInterval(0, 0);
+            showSelectedIssue();
         } else {
             clearTicketDetail();
         }
@@ -594,13 +662,11 @@ public class SwingIssueApp extends JFrame {
         selectedTicketLabel.setText("Selected ticket: #" + issue.getId() + " " + issue.getTitle());
         ticketTitleLabel.setText("#" + issue.getId() + " " + issue.getTitle());
         StringBuilder properties = new StringBuilder();
-        properties.append("Project  : ").append(issue.getProjectName()).append('\n');
-        properties.append("Status   : ").append(issue.getStatus()).append('\n');
-        properties.append("Priority : ").append(issue.getPriority()).append('\n');
-        properties.append("Reporter : ").append(issue.getReporter()).append('\n');
-        properties.append("Reported : ").append(issue.getReportedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))).append('\n');
-        properties.append("Assignee : ").append(value(issue.getAssignee())).append('\n');
-        properties.append("Fixer    : ").append(value(issue.getFixer()));
+        properties.append(String.format("%-10s %-18s %-10s %s%n", "Project", issue.getProjectName(), "Status", issue.getStatus()));
+        properties.append(String.format("%-10s %-18s %-10s %s%n", "Priority", issue.getPriority(), "Reporter", issue.getReporter()));
+        properties.append(String.format("%-10s %-18s %-10s %s%n", "Assignee", value(issue.getAssignee()), "Fixer", value(issue.getFixer())));
+        properties.append(String.format("%-10s %-18s %-10s %s", "Reported", issue.getReportedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+                "Updated", latestActivity(issue)));
         ticketPropertiesArea.setText(properties.toString());
         ticketPropertiesArea.setCaretPosition(0);
 
@@ -624,11 +690,17 @@ public class SwingIssueApp extends JFrame {
     }
 
     private Issue selectedIssue() {
-        Issue issue = issueList.getSelectedValue();
-        if (issue == null) {
+        int row = issueTable.getSelectedRow();
+        if (row < 0) {
             message("Select an issue first.");
+            return null;
         }
-        return issue;
+        int modelRow = issueTable.convertRowIndexToModel(row);
+        if (modelRow < 0 || modelRow >= visibleIssues.size()) {
+            message("Select an issue first.");
+            return null;
+        }
+        return visibleIssues.get(modelRow);
     }
 
     private String input(String label) {
@@ -662,6 +734,14 @@ public class SwingIssueApp extends JFrame {
 
     private static String value(String value) {
         return value == null ? "-" : value;
+    }
+
+    private static String latestActivity(Issue issue) {
+        if (issue.getComments().isEmpty()) {
+            return issue.getReportedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        }
+        Comment latest = issue.getComments().get(issue.getComments().size() - 1);
+        return latest.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
     }
 
     private static class RoleAction {
