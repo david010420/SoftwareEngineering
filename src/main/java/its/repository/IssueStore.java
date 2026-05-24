@@ -20,6 +20,10 @@ public class IssueStore implements Serializable {
         return nextIssueId++;
     }
 
+    public void setNextIssueId(long nextId) {
+        this.nextIssueId = nextId;
+    }
+
     public List<Project> getProjects() {
         return projects;
     }

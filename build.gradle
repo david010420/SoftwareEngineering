@@ -20,13 +20,11 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation 'org.mockito:mockito-core:5.11.0'
     testImplementation 'org.mockito:mockito-junit-jupiter:5.11.0'
-    implementation 'com.mysql:mysql-connector-j:8.3.0'
-    implementation 'com.zaxxer:HikariCP:5.1.0'
+    implementation 'org.xerial:sqlite-jdbc:3.45.3.0'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
-    failOnNoDiscoveredTests = false
 }
 
 tasks.withType(JavaCompile) {

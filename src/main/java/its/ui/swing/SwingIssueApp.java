@@ -125,7 +125,7 @@ public class SwingIssueApp extends JFrame {
         String description = input("Description");
         String reporter = input("Reporter");
         if (title != null && description != null && reporter != null) {
-            controller.createIssue("project1", title, description, reporter, Priority.MAJOR);
+            controller.createIssue("project1", "1", title, description, reporter, Priority.MAJOR);
             refreshIssues(controller.issues());
         }
     }

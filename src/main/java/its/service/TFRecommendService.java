@@ -24,7 +24,13 @@ public class TFRecommendService implements RecommendService {
 
     @Override
     public List<String> recommendUser(String issueId, int topN) {
-        return null;
+        Issue target = issueRepository.findById(issueId).orElseThrow(() -> new RuntimeException(issueId));
+        String projectId = target.getProjectId();
+        if (!index.containsKey(projectId)) {
+            cal(projectId);
+        }
+        // TODO: TF-IDF 유사도 계산 구현 예정
+        return List.of();
     }
 
     @Override

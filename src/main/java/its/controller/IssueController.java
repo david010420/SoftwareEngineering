@@ -43,8 +43,8 @@ public class IssueController {
         return service.addUser(username, role);
     }
 
-    public Issue createIssue(String projectName, String title, String description, String reporter, Priority priority) {
-        return service.createIssue(projectName, title, description, reporter, priority);
+    public Issue createIssue(String projectName, String projectId, String title, String description, String reporter, Priority priority) {
+        return service.createIssue(projectName, projectId, title, description, reporter, priority);
     }
 
     public Issue addComment(long issueId, String author, String message) {

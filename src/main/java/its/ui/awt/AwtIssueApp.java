@@ -87,7 +87,7 @@ public class AwtIssueApp extends Frame {
     }
 
     private void newIssue() {
-        controller.createIssue("project1", "AWT created issue", "Created from AWT UI", "tester1", Priority.MAJOR);
+        controller.createIssue("project1", "1", "AWT created issue", "Created from AWT UI", "tester1", Priority.MAJOR);
         refresh(controller.issues());
     }
 

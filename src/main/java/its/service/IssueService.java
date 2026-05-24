@@ -72,11 +72,11 @@ public class IssueService {
         return user;
     }
 
-    public Issue createIssue(String projectName, String title, String description, String reporter, Priority priority) {
+    public Issue createIssue(String projectName, String projectId, String title, String description, String reporter, Priority priority) {
         IssueStore store = repository.load();
         requireProject(store, projectName);
         requireUser(store, reporter);
-        Issue issue = new Issue(store.nextIssueId(), projectName, title, description, reporter, LocalDateTime.now(), priority);
+        Issue issue = new Issue(store.nextIssueId(), projectName, projectId, title, description, reporter, LocalDateTime.now(), priority);
         store.getIssues().add(issue);
         repository.save(store);
         return issue;
@@ -201,19 +201,19 @@ public class IssueService {
         for (int i = 1; i <= 5; i++) {
             store.getUsers().add(new UserAccount("tester" + i,"password", Role.TESTER));
         }
-        Issue login = new Issue(store.nextIssueId(), "project1", "Login fails after password reset",
+        Issue login = new Issue(store.nextIssueId(), "project1", "1", "Login fails after password reset",
                 "Users cannot sign in after resetting a password.", "tester1", LocalDateTime.now().minusDays(3), Priority.CRITICAL);
         login.assignTo("dev1");
         login.addComment(new Comment("PL1", "Please check auth token refresh.", LocalDateTime.now().minusDays(3)));
         login.markFixed("dev1");
         login.changeStatus(IssueStatus.CLOSED);
         login.addComment(new Comment("tester1", "Verified on test server.", LocalDateTime.now().minusDays(2)));
-        Issue search = new Issue(store.nextIssueId(), "project1", "Search filter ignores assignee",
+        Issue search = new Issue(store.nextIssueId(), "project1", "2", "Search filter ignores assignee",
                 "Assignee filter returns all issues.", "tester2", LocalDateTime.now().minusDays(2), Priority.MAJOR);
         search.assignTo("dev2");
         search.markFixed("dev2");
         search.changeStatus(IssueStatus.RESOLVED);
-        Issue ui = new Issue(store.nextIssueId(), "project1", "Issue detail comment order is reversed",
+        Issue ui = new Issue(store.nextIssueId(), "project1", "3", "Issue detail comment order is reversed",
                 "Newest comment is shown before older comments.", "tester1", LocalDateTime.now().minusDays(1), Priority.MINOR);
         store.getIssues().add(login);
         store.getIssues().add(search);

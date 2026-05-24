@@ -12,6 +12,8 @@ public class Issue implements Serializable {
 
     private final long id;
     private String projectName;
+
+    private String projectId;
     private String title;
     private String description;
     private String reporter;
@@ -22,7 +24,7 @@ public class Issue implements Serializable {
     private IssueStatus status;
     private final List<Comment> comments = new ArrayList<>();
 
-    public Issue(long id, String projectName, String title, String description, String reporter,
+    public Issue(long id, String projectName, String projectId, String title, String description, String reporter,
                  LocalDateTime reportedDate, Priority priority) {
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("title is required");
@@ -32,6 +34,7 @@ public class Issue implements Serializable {
         }
         this.id = id;
         this.projectName = requireText(projectName, "projectName");
+        this.projectId = projectId;
         this.title = title.trim();
         this.description = description.trim();
         this.reporter = requireText(reporter, "reporter");
@@ -53,6 +56,10 @@ public class Issue implements Serializable {
 
     public String getProjectName() {
         return projectName;
+    }
+
+    public String getProjectId() {
+        return projectId;
     }
 
     public String getTitle() {

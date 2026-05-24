@@ -5,7 +5,6 @@ import its.model.Issue;
 import its.model.IssueStatus;
 import its.model.Priority;
 import its.model.Role;
-import its.repository.FileIssueRepository;
 import its.service.IssueSearchCriteria;
 import its.service.IssueService;
 
@@ -14,16 +13,16 @@ import java.nio.file.Path;
 
 public class IssueServiceTest {
     public static void main(String[] args) throws Exception {
-        Path testStore = Path.of("data", "test-issues.store");
+        Path testStore = Path.of("data", "test-issues.db");
         Files.deleteIfExists(testStore);
 
-        IssueController controller = new IssueController(new IssueService(new FileIssueRepository(testStore)));
+        IssueController controller = new IssueController(new IssueService(new SqliteIssueRepository(testStore.toString())));
         controller.addProject("project1");
         controller.addUser("PL1", Role.PL);
         controller.addUser("dev1", Role.DEV);
         controller.addUser("tester1", Role.TESTER);
 
-        Issue issue = controller.createIssue("project1", "Login error", "Cannot login with valid account", "tester1", Priority.MAJOR);
+        Issue issue = controller.createIssue("project1", "4", "Login error", "Cannot login with valid account", "tester1", Priority.MAJOR);
         assertEquals(IssueStatus.NEW, issue.getStatus(), "new issue status");
         assertEquals("tester1", issue.getReporter(), "reporter auto set");
 

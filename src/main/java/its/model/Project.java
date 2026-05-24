@@ -5,6 +5,8 @@ import java.io.Serializable;
 public class Project implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    private String id;
+
     private final String name;
 
     public Project(String name) {
@@ -17,6 +19,8 @@ public class Project implements Serializable {
     public String getName() {
         return name;
     }
+
+    public String getId() { return this.id;}
 
     @Override
     public String toString() {
