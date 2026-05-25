@@ -38,16 +38,16 @@ public class TFRecommendServiceTest {
         assertDoesNotThrow(() -> service.cal("proj1"));
     }
 
-    private Issue newIssue(long id) {
-        return new Issue(id, "proj1", String.valueOf(id), "제목" + id, "설명" + id,
-                "tester1", LocalDateTime.now(), Priority.MAJOR);
-    }
-
     @Test
     void cal_fixer없는이슈만있다면_종료() {
         Issue issue = newIssue(1L);
         issue.changeStatus(IssueStatus.RESOLVED);
         when(issueRepository.findByProjectId("proj1")).thenReturn(List.of(issue));
         assertDoesNotThrow(() -> service.cal("proj1"));
+    }
+
+    private Issue newIssue(long id) {
+        return new Issue(id, "proj1", String.valueOf(id), "제목" + id, "설명" + id,
+                "tester1", LocalDateTime.now(), Priority.MAJOR);
     }
 }
