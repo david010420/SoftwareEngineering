@@ -29,7 +29,7 @@ class UserServiceImplTest {
     @BeforeEach
     void setUp() {
         // ADMIN 계정 조회 stubbing
-        UserAccount admin = new UserAccount("admin", "pw", Role.ADMIN);
+        UserAccount admin = new UserAccount(1L, "admin", "pw", Role.ADMIN);
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
         when(userRepository.existsByUsername("admin")).thenReturn(true);
     }
@@ -49,7 +49,7 @@ class UserServiceImplTest {
     // ADMIN_아니면 예외
     @Test
     void register_ADMIN_아니면_예외() {
-        UserAccount pl1 = new UserAccount("pl1", "pw", Role.PL);
+        UserAccount pl1 = new UserAccount(2L, "pl1", "pw", Role.PL);
         when(userRepository.findByUsername("pl1")).thenReturn(Optional.of(pl1));
 
         assertThrows(RuntimeException.class,
@@ -68,7 +68,7 @@ class UserServiceImplTest {
     // login 성공
     @Test
     void login_성공() {
-        UserAccount dev1 = new UserAccount("dev1", "mypass", Role.DEV);
+        UserAccount dev1 = new UserAccount(3L, "dev1", "mypass", Role.DEV);
         when(userRepository.findByUsername("dev1")).thenReturn(Optional.of(dev1));
 
         UserAccount result = userService.login("dev1", "mypass");
@@ -88,7 +88,7 @@ class UserServiceImplTest {
     // login 실패 - 틀린 비밀번호
     @Test
     void login_틀린비밀번호이면_예외() {
-        UserAccount dev1 = new UserAccount("dev1", "correctpw", Role.DEV);
+        UserAccount dev1 = new UserAccount(4L, "dev1", "correctpw", Role.DEV);
         when(userRepository.findByUsername("dev1")).thenReturn(Optional.of(dev1));
 
         assertThrows(RuntimeException.class,
@@ -98,7 +98,7 @@ class UserServiceImplTest {
     // delete 성공
     @Test
     void delete_성공() {
-        UserAccount dev1 = new UserAccount("dev1", "pw", Role.DEV);
+        UserAccount dev1 = new UserAccount(5L, "dev1", "pw", Role.DEV);
         when(userRepository.findByUsername("dev1")).thenReturn(Optional.of(dev1));
         when(userRepository.delete("dev1")).thenReturn(dev1);
 
@@ -119,7 +119,7 @@ class UserServiceImplTest {
     // delete - 비ADMIN
     @Test
     void delete_비ADMIN이면_예외() {
-        UserAccount dev1 = new UserAccount("dev1", "pw", Role.DEV);
+        UserAccount dev1 = new UserAccount(6L, "dev1", "pw", Role.DEV);
         when(userRepository.findByUsername("dev1")).thenReturn(Optional.of(dev1));
 
         assertThrows(RuntimeException.class,

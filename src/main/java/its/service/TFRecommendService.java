@@ -29,7 +29,7 @@ public class TFRecommendService implements RecommendService {
         if (!index.containsKey(projectId)) {
             cal(projectId);
         }
-        // TODO: TF-IDF 유사도 계산 구현 예정
+
         return List.of();
     }
 

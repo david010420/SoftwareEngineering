@@ -66,7 +66,7 @@ public class IssueService {
                 .ifPresent(u -> {
                     throw new IllegalArgumentException("user already exists: " + username);
                 });
-        UserAccount user = new UserAccount(username, "password", role);
+        UserAccount user = new UserAccount(store.nextUserId(), username, "password", role);
         store.getUsers().add(user);
         repository.save(store);
         return user;
@@ -192,14 +192,14 @@ public class IssueService {
             return;
         }
         store.getProjects().add(new Project("project1"));
-        store.getUsers().add(new UserAccount("admin","password", Role.ADMIN));
-        store.getUsers().add(new UserAccount("PL1", "password", Role.PL));
-        store.getUsers().add(new UserAccount("PL2","password", Role.PL));
+        store.getUsers().add(new UserAccount(store.nextUserId(), "admin", "password", Role.ADMIN));
+        store.getUsers().add(new UserAccount(store.nextUserId(), "PL1", "password", Role.PL));
+        store.getUsers().add(new UserAccount(store.nextUserId(), "PL2", "password", Role.PL));
         for (int i = 1; i <= 10; i++) {
-            store.getUsers().add(new UserAccount("dev" + i,"password", Role.DEV));
+            store.getUsers().add(new UserAccount(store.nextUserId(), "dev" + i, "password", Role.DEV));
         }
         for (int i = 1; i <= 5; i++) {
-            store.getUsers().add(new UserAccount("tester" + i,"password", Role.TESTER));
+            store.getUsers().add(new UserAccount(store.nextUserId(), "tester" + i, "password", Role.TESTER));
         }
         Issue login = new Issue(store.nextIssueId(), "project1", "1", "Login fails after password reset",
                 "Users cannot sign in after resetting a password.", "tester1", LocalDateTime.now().minusDays(3), Priority.CRITICAL);
