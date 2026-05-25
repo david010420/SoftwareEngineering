@@ -1,15 +1,15 @@
-package its.ui.swing;
+package ui.swing;
 
+import app.AppFactory;
 import controller.IssueController;
-import its.AppFactory;
-import its.controller.UserController;
-import its.model.Role;
-import its.model.UserAccount;
+import controller.UserController;
 import model.Issue;
 import model.IssueComment;
 import model.IssueStatus;
 import model.Priority;
 import model.Project;
+import model.Role;
+import model.UserAccount;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;

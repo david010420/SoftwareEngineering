@@ -1,12 +1,14 @@
 package model;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class Project {
+public class Project implements Serializable {
+    private static final long serialVersionUID = 1L;
     private long id;
     private String name;
     private LocalDateTime createdAt;

@@ -16,18 +16,25 @@ import model.Project;
 import service.IssueService;
 import service.IssueStatistics;
 import service.ProjectService;
+import service.RecommendService;
 
 public class IssueController {
     private final IssueService service;
     private final ProjectService projectService;
+    private final RecommendService recommendService;
 
     public IssueController(IssueService service) {
-        this(service, null);
+        this(service, null, null);
     }
 
     public IssueController(IssueService service, ProjectService projectService) {
+        this(service, projectService, null);
+    }
+
+    public IssueController(IssueService service, ProjectService projectService, RecommendService recommendService) {
         this.service = Objects.requireNonNull(service, "service");
         this.projectService = projectService;
+        this.recommendService = recommendService;
     }
 
     public Issue reportIssue(long projectId, String title, String description, String reporterUsername, Priority priority) {
@@ -150,7 +157,10 @@ public class IssueController {
     }
 
     public List<String> recommendAssignees(long issueId) {
-        return Collections.emptyList();
+        if (recommendService == null) {
+            return Collections.emptyList();
+        }
+        return recommendService.recommendUser(issueId, 3);
     }
 
     private Project findProjectByName(String projectName) {
