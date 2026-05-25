@@ -1,16 +1,15 @@
 package its.ui.swing;
 
+import controller.IssueController;
 import its.AppFactory;
-import its.controller.IssueController;
 import its.controller.UserController;
-import its.model.Comment;
-import its.model.Issue;
-import its.model.IssueStatus;
-import its.model.Priority;
-import its.model.Project;
 import its.model.Role;
 import its.model.UserAccount;
-import its.service.IssueSearchCriteria;
+import model.Issue;
+import model.IssueComment;
+import model.IssueStatus;
+import model.Priority;
+import model.Project;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -44,7 +43,7 @@ public class SwingIssueApp extends JFrame {
     private final IssueController controller;
     private final UserController userController;
     private final DefaultTableModel issueTableModel = new DefaultTableModel(
-            new String[]{"ID", "Status", "Priority", "Title", "Assignee", "Reporter", "Updated"}, 0) {
+            new String[]{"ID", "Project", "Status", "Priority", "Title", "Assignee", "Reporter", "Updated"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -64,15 +63,25 @@ public class SwingIssueApp extends JFrame {
     private final JComboBox<Project> projectBox = new JComboBox<>();
     private final JLabel currentUserLabel = new JLabel("Not logged in");
     private final JLabel selectedTicketLabel = new JLabel("Selected ticket: none");
+    private final JLabel workflowModeLabel = new JLabel("Choose an action.");
+    private final JLabel workflowAssigneeLabel = new JLabel("Assignee");
+    private final JTextField workflowAssigneeField = new JTextField();
+    private final JLabel workflowCommentLabel = new JLabel("Comment");
+    private final JTextArea workflowCommentArea = new JTextArea(8, 40);
+    private final JButton workflowApplyButton = new JButton("Apply");
     private final JTextArea recommendationArea = new JTextArea();
     private final JTextArea statsArea = new JTextArea();
+    private final JLabel statusMessageLabel = new JLabel("Ready.");
     private final List<RoleAction> roleActions = new ArrayList<>();
     private JTabbedPane tabs;
     private JPanel browseTab;
     private JPanel newIssueTab;
     private JPanel workflowTab;
     private JPanel reportsTab;
+    private JPanel adminTab;
     private UserAccount currentUser;
+    private Long selectedIssueId;
+    private Runnable selectedWorkflowAction;
 
     public SwingIssueApp(IssueController controller, UserController userController) {
         super("Issue Management System - Swing");
@@ -98,11 +107,13 @@ public class SwingIssueApp extends JFrame {
         newIssueTab = buildNewIssueTab();
         workflowTab = buildWorkflowTab();
         reportsTab = buildReportsTab();
+        adminTab = buildAdminTab();
 
         JPanel root = new JPanel(new BorderLayout(8, 8));
         root.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         root.add(loginPanel, BorderLayout.NORTH);
         root.add(tabs, BorderLayout.CENTER);
+        root.add(statusMessageLabel, BorderLayout.SOUTH);
         setContentPane(root);
         updateLoginState();
     }
@@ -110,7 +121,7 @@ public class SwingIssueApp extends JFrame {
     private JPanel buildBrowseTab() {
         JPanel filters = new JPanel(new GridLayout(6, 2, 6, 6));
         filters.setBorder(BorderFactory.createTitledBorder("Ticket Query"));
-        statusBox.addItem("");
+        statusBox.addItem("ALL");
         for (IssueStatus status : IssueStatus.values()) {
             statusBox.addItem(status.name());
         }
@@ -125,9 +136,14 @@ public class SwingIssueApp extends JFrame {
         filters.add(new JLabel("Status"));
         filters.add(statusBox);
         filters.add(new JLabel(""));
+        JPanel searchActions = new JPanel(new GridLayout(1, 2, 6, 0));
         JButton searchButton = new JButton("Search");
         searchButton.addActionListener(e -> search());
-        filters.add(searchButton);
+        JButton resetButton = new JButton("Reset");
+        resetButton.addActionListener(e -> resetSearch());
+        searchActions.add(searchButton);
+        searchActions.add(resetButton);
+        filters.add(searchActions);
 
         JPanel quickFilters = new JPanel(new GridLayout(4, 2, 6, 6));
         quickFilters.setBorder(BorderFactory.createTitledBorder("Quick Filters"));
@@ -212,7 +228,7 @@ public class SwingIssueApp extends JFrame {
             titleField.setText("");
             descriptionField.setText("");
             refreshIssues(controller.issues());
-            message("Issue created.");
+            showStatus("Issue created.");
         }));
         roleActions.add(new RoleAction(createButton, Role.TESTER));
 
@@ -226,28 +242,66 @@ public class SwingIssueApp extends JFrame {
     private JPanel buildWorkflowTab() {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         actions.setBorder(BorderFactory.createTitledBorder("Issue Actions"));
-        addRoleButton(actions, "Comment", this::addComment, Role.ADMIN, Role.PL, Role.DEV, Role.TESTER);
-        addRoleButton(actions, "Assign", this::assign, Role.PL);
-        addRoleButton(actions, "Fix", this::fix, Role.DEV);
-        addRoleButton(actions, "Resolve", () -> changeStatus(IssueStatus.RESOLVED), Role.TESTER);
-        addRoleButton(actions, "Close", () -> changeStatus(IssueStatus.CLOSED), Role.PL);
-        addRoleButton(actions, "Reopen", () -> changeStatus(IssueStatus.REOPENED), Role.TESTER);
+        addWorkflowButton(actions, "Comment", false, this::addComment,
+                new IssueStatus[0], Role.ADMIN, Role.PL, Role.DEV, Role.TESTER);
+        addWorkflowButton(actions, "Assign", true, this::assign,
+                new IssueStatus[]{IssueStatus.NEW, IssueStatus.REOPENED}, Role.PL);
+        addWorkflowButton(actions, "Fix", false, this::fix,
+                new IssueStatus[]{IssueStatus.ASSIGNED, IssueStatus.REOPENED}, Role.DEV);
+        addWorkflowButton(actions, "Resolve", false, () -> changeStatus(IssueStatus.RESOLVED),
+                new IssueStatus[]{IssueStatus.FIXED}, Role.TESTER);
+        addWorkflowButton(actions, "Close", false, () -> changeStatus(IssueStatus.CLOSED),
+                new IssueStatus[]{IssueStatus.RESOLVED}, Role.PL);
+        addWorkflowButton(actions, "Reopen", false, () -> changeStatus(IssueStatus.REOPENED),
+                new IssueStatus[]{IssueStatus.RESOLVED, IssueStatus.CLOSED}, Role.TESTER);
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         selectedTicketLabel.setBorder(BorderFactory.createEmptyBorder(0, 4, 8, 4));
         selectedTicketLabel.setPreferredSize(new Dimension(800, 28));
-        panel.add(selectedTicketLabel, BorderLayout.NORTH);
-        panel.add(new JScrollPane(actions), BorderLayout.CENTER);
+
+        JPanel header = new JPanel(new BorderLayout(8, 8));
+        header.add(selectedTicketLabel, BorderLayout.NORTH);
+        header.add(actions, BorderLayout.CENTER);
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(buildWorkflowInputPanel(), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel buildWorkflowInputPanel() {
+        workflowCommentArea.setLineWrap(true);
+        workflowCommentArea.setWrapStyleWord(true);
+        workflowApplyButton.setEnabled(false);
+        workflowApplyButton.addActionListener(e -> runSafely(() -> {
+            if (selectedWorkflowAction == null) {
+                throw new IllegalStateException("Choose an action first.");
+            }
+            selectedWorkflowAction.run();
+        }));
+
+        JPanel assigneeRow = new JPanel(new BorderLayout(8, 0));
+        assigneeRow.add(workflowAssigneeLabel, BorderLayout.WEST);
+        assigneeRow.add(workflowAssigneeField, BorderLayout.CENTER);
+
+        JPanel commentPanel = new JPanel(new BorderLayout(8, 8));
+        commentPanel.add(workflowCommentLabel, BorderLayout.NORTH);
+        commentPanel.add(new JScrollPane(workflowCommentArea), BorderLayout.CENTER);
+
+        JPanel topPanel = new JPanel(new BorderLayout(8, 8));
+        topPanel.add(workflowModeLabel, BorderLayout.NORTH);
+        topPanel.add(assigneeRow, BorderLayout.CENTER);
+
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(BorderFactory.createTitledBorder("Action Input"));
+        panel.add(topPanel, BorderLayout.NORTH);
+        panel.add(commentPanel, BorderLayout.CENTER);
+        panel.add(workflowApplyButton, BorderLayout.SOUTH);
+        showWorkflowAssigneeInput(false);
         return panel;
     }
 
     private JPanel buildReportsTab() {
-        JPanel adminActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-        adminActions.setBorder(BorderFactory.createTitledBorder("Admin"));
-        addRoleButton(adminActions, "Add User", this::addUser, Role.ADMIN);
-        addRoleButton(adminActions, "Add Project", this::addProject, Role.ADMIN);
-
         JPanel reportActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         reportActions.setBorder(BorderFactory.createTitledBorder("Reports"));
         addRoleButton(reportActions, "Recommend Assignee", this::recommend, Role.PL);
@@ -271,13 +325,20 @@ public class SwingIssueApp extends JFrame {
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        JPanel actions = new JPanel(new GridLayout(1, 2, 8, 8));
-        actions.add(adminActions);
-        actions.add(reportActions);
-        JScrollPane actionsScroll = new JScrollPane(actions);
-        actionsScroll.setPreferredSize(new Dimension(1000, 82));
-        panel.add(actionsScroll, BorderLayout.NORTH);
+        panel.add(reportActions, BorderLayout.NORTH);
         panel.add(resultSplit, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel buildAdminTab() {
+        JPanel adminActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        adminActions.setBorder(BorderFactory.createTitledBorder("Admin"));
+        addRoleButton(adminActions, "Add User", this::addUser, Role.ADMIN);
+        addRoleButton(adminActions, "Add Project", this::addProject, Role.ADMIN);
+
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        panel.add(adminActions, BorderLayout.NORTH);
         return panel;
     }
 
@@ -320,12 +381,13 @@ public class SwingIssueApp extends JFrame {
         issueTable.setAutoCreateRowSorter(true);
         issueTable.setRowHeight(24);
         issueTable.getColumnModel().getColumn(0).setPreferredWidth(50);
-        issueTable.getColumnModel().getColumn(1).setPreferredWidth(95);
-        issueTable.getColumnModel().getColumn(2).setPreferredWidth(90);
-        issueTable.getColumnModel().getColumn(3).setPreferredWidth(260);
-        issueTable.getColumnModel().getColumn(4).setPreferredWidth(95);
+        issueTable.getColumnModel().getColumn(1).setPreferredWidth(110);
+        issueTable.getColumnModel().getColumn(2).setPreferredWidth(95);
+        issueTable.getColumnModel().getColumn(3).setPreferredWidth(90);
+        issueTable.getColumnModel().getColumn(4).setPreferredWidth(250);
         issueTable.getColumnModel().getColumn(5).setPreferredWidth(95);
-        issueTable.getColumnModel().getColumn(6).setPreferredWidth(135);
+        issueTable.getColumnModel().getColumn(6).setPreferredWidth(95);
+        issueTable.getColumnModel().getColumn(7).setPreferredWidth(135);
     }
 
     private void configureReadOnly(JTextArea area) {
@@ -345,6 +407,14 @@ public class SwingIssueApp extends JFrame {
         JButton button = new JButton(text);
         button.addActionListener(e -> runSafely(action));
         roleActions.add(new RoleAction(button, allowedRoles));
+        panel.add(button);
+    }
+
+    private void addWorkflowButton(JPanel panel, String text, boolean needsAssignee, Runnable action,
+                                   IssueStatus[] allowedStatuses, Role... allowedRoles) {
+        JButton button = new JButton(text);
+        button.addActionListener(e -> selectWorkflowAction(text, needsAssignee, action));
+        roleActions.add(new RoleAction(button, allowedStatuses, allowedRoles));
         panel.add(button);
     }
 
@@ -410,8 +480,9 @@ public class SwingIssueApp extends JFrame {
             currentUserLabel.setText("Logged in: " + currentUser.getUsername() + " (" + currentUser.getRole() + ")");
         }
         for (RoleAction action : roleActions) {
-            action.button.setVisible(currentUser != null && action.allows(currentUser.getRole()));
+            action.button.setVisible(action.isAvailableFor(currentUser, currentIssue()));
         }
+        resetWorkflowAction();
         rebuildVisibleTabs();
         revalidate();
         repaint();
@@ -431,7 +502,10 @@ public class SwingIssueApp extends JFrame {
             tabs.addTab("Issue Actions", workflowTab);
         }
         if (currentUser != null && hasAnyActionFor(reportsTab, currentUser.getRole())) {
-            tabs.addTab("Reports & Admin", reportsTab);
+            tabs.addTab("Reports", reportsTab);
+        }
+        if (currentUser != null && hasAnyActionFor(adminTab, currentUser.getRole())) {
+            tabs.addTab("Admin", adminTab);
         }
         if (selected != null) {
             for (int i = 0; i < tabs.getTabCount(); i++) {
@@ -464,14 +538,18 @@ public class SwingIssueApp extends JFrame {
     }
 
     private void search() {
-        IssueStatus status = statusBox.getSelectedItem() == null || statusBox.getSelectedItem().toString().isBlank()
-                ? null : IssueStatus.valueOf(statusBox.getSelectedItem().toString());
-        refreshIssues(controller.search(new IssueSearchCriteria()
-                .projectName(projectFilterField.getText())
-                .query(queryField.getText())
-                .reporter(reporterField.getText())
-                .assignee(assigneeField.getText())
-                .status(status)));
+        String selectedStatus = statusBox.getSelectedItem() == null ? "ALL" : statusBox.getSelectedItem().toString();
+        IssueStatus status = "ALL".equals(selectedStatus) ? null : IssueStatus.valueOf(selectedStatus);
+        List<Issue> results = controller.search(queryField.getText(), reporterField.getText(), assigneeField.getText(), status);
+        String projectFilter = projectFilterField.getText();
+        if (projectFilter != null && !projectFilter.isBlank()) {
+            String normalizedProject = projectFilter.trim();
+            results = results.stream()
+                    .filter(issue -> projectNameOf(issue).equalsIgnoreCase(normalizedProject)
+                            || String.valueOf(issue.getProjectId()).equals(normalizedProject))
+                    .toList();
+        }
+        refreshIssues(results);
     }
 
     private void applyQuickFilter(IssueStatus status, String reporter, String assignee) {
@@ -479,7 +557,7 @@ public class SwingIssueApp extends JFrame {
         queryField.setText("");
         reporterField.setText(reporter == null ? "" : reporter);
         assigneeField.setText(assignee == null ? "" : assignee);
-        statusBox.setSelectedItem(status == null ? "" : status.name());
+        statusBox.setSelectedItem(status == null ? "ALL" : status.name());
         search();
     }
 
@@ -488,10 +566,19 @@ public class SwingIssueApp extends JFrame {
         queryField.setText("");
         reporterField.setText("");
         assigneeField.setText("");
-        statusBox.setSelectedItem("");
+        statusBox.setSelectedItem("ALL");
         refreshIssues(controller.issues().stream()
                 .filter(issue -> issue.getStatus() != IssueStatus.CLOSED && issue.getStatus() != IssueStatus.RESOLVED)
                 .toList());
+    }
+
+    private void resetSearch() {
+        projectFilterField.setText("");
+        queryField.setText("");
+        reporterField.setText("");
+        assigneeField.setText("");
+        statusBox.setSelectedItem("ALL");
+        refreshIssues(controller.issues());
     }
 
     private void addUser() {
@@ -504,7 +591,7 @@ public class SwingIssueApp extends JFrame {
                 JOptionPane.PLAIN_MESSAGE, null, Role.values(), Role.DEV);
         if (role != null) {
             userController.register(currentUser.getUsername(), username, "1234", role);
-            message("User added. Default password is 1234.");
+            showStatus("User added. Default password is 1234.");
         }
     }
 
@@ -516,7 +603,7 @@ public class SwingIssueApp extends JFrame {
         }
         controller.addProject(projectName);
         refreshProjectChoices();
-        message("Project added.");
+        showStatus("Project added.");
     }
 
     private void refreshProjectChoices() {
@@ -548,11 +635,14 @@ public class SwingIssueApp extends JFrame {
         if (issue == null) {
             return;
         }
-        String message = input("Comment");
-        if (message != null) {
-            controller.addComment(issue.getId(), currentUser.getUsername(), message);
-            refreshIssues(controller.issues());
+        String comment = workflowComment();
+        if (comment.isBlank()) {
+            throw new IllegalStateException("Comment is required.");
         }
+        controller.addComment(issue.getId(), currentUser.getUsername(), comment);
+        clearWorkflowInputs();
+        refreshIssues(controller.issues());
+        showStatus("Comment added to issue #" + issue.getId() + ".");
     }
 
     private void assign() {
@@ -561,12 +651,14 @@ public class SwingIssueApp extends JFrame {
         if (issue == null) {
             return;
         }
-        String assignee = input("Assignee dev account");
-        String comment = input("Comment");
-        if (assignee != null) {
-            controller.assignIssue(issue.getId(), assignee, currentUser.getUsername(), comment == null ? "" : comment);
-            refreshIssues(controller.issues());
+        String assignee = workflowAssignee();
+        if (assignee.isBlank()) {
+            throw new IllegalStateException("Assignee is required.");
         }
+        controller.assignIssue(issue.getId(), assignee, currentUser.getUsername(), workflowComment());
+        clearWorkflowInputs();
+        refreshIssues(controller.issues());
+        showStatus("Issue #" + issue.getId() + " assigned to " + assignee + ".");
     }
 
     private void fix() {
@@ -575,9 +667,10 @@ public class SwingIssueApp extends JFrame {
         if (issue == null) {
             return;
         }
-        String comment = input("Comment");
-        controller.markFixed(issue.getId(), currentUser.getUsername(), comment == null ? "" : comment);
+        controller.markFixed(issue.getId(), currentUser.getUsername(), workflowComment());
+        clearWorkflowInputs();
         refreshIssues(controller.issues());
+        showStatus("Issue #" + issue.getId() + " marked fixed.");
     }
 
     private void changeStatus(IssueStatus status) {
@@ -589,9 +682,10 @@ public class SwingIssueApp extends JFrame {
         if (issue == null) {
             return;
         }
-        String comment = input("Comment");
-        controller.changeStatus(issue.getId(), status, currentUser.getUsername(), comment == null ? "" : comment);
+        controller.changeStatus(issue.getId(), status, currentUser.getUsername(), workflowComment());
+        clearWorkflowInputs();
         refreshIssues(controller.issues());
+        showStatus("Issue #" + issue.getId() + " changed to " + status + ".");
     }
 
     private void recommend() {
@@ -632,12 +726,14 @@ public class SwingIssueApp extends JFrame {
     }
 
     private void refreshIssues(List<Issue> issues) {
+        Long previousSelection = selectedIssueId;
         visibleIssues.clear();
         visibleIssues.addAll(issues);
         issueTableModel.setRowCount(0);
         for (Issue issue : issues) {
             issueTableModel.addRow(new Object[]{
                     issue.getId(),
+                    projectNameOf(issue),
                     issue.getStatus(),
                     issue.getPriority(),
                     issue.getTitle(),
@@ -647,22 +743,35 @@ public class SwingIssueApp extends JFrame {
             });
         }
         if (!visibleIssues.isEmpty()) {
-            issueTable.setRowSelectionInterval(0, 0);
+            int rowToSelect = 0;
+            if (previousSelection != null) {
+                for (int i = 0; i < visibleIssues.size(); i++) {
+                    if (visibleIssues.get(i).getId() == previousSelection) {
+                        rowToSelect = i;
+                        break;
+                    }
+                }
+            }
+            selectedIssueId = visibleIssues.get(rowToSelect).getId();
+            issueTable.setRowSelectionInterval(rowToSelect, rowToSelect);
             showSelectedIssue();
         } else {
+            selectedIssueId = null;
             clearTicketDetail();
         }
     }
 
     private void showSelectedIssue() {
-        Issue issue = selectedIssue();
+        Issue issue = selectedIssueFromTable();
         if (issue == null) {
             return;
         }
+        selectedIssueId = issue.getId();
+        updateActionVisibility();
         selectedTicketLabel.setText("Selected ticket: #" + issue.getId() + " " + issue.getTitle());
         ticketTitleLabel.setText("#" + issue.getId() + " " + issue.getTitle());
         StringBuilder properties = new StringBuilder();
-        properties.append(String.format("%-10s %-18s %-10s %s%n", "Project", issue.getProjectName(), "Status", issue.getStatus()));
+        properties.append(String.format("%-10s %-18s %-10s %s%n", "Project", projectNameOf(issue), "Status", issue.getStatus()));
         properties.append(String.format("%-10s %-18s %-10s %s%n", "Priority", issue.getPriority(), "Reporter", issue.getReporter()));
         properties.append(String.format("%-10s %-18s %-10s %s%n", "Assignee", value(issue.getAssignee()), "Fixer", value(issue.getFixer())));
         properties.append(String.format("%-10s %-18s %-10s %s", "Reported", issue.getReportedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
@@ -674,8 +783,14 @@ public class SwingIssueApp extends JFrame {
         descriptionArea.setCaretPosition(0);
 
         StringBuilder comments = new StringBuilder();
-        for (Comment comment : issue.getComments()) {
-            comments.append(comment).append('\n');
+        for (IssueComment comment : issue.getComments()) {
+            comments.append("[")
+                    .append(comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
+                    .append("] ")
+                    .append(comment.getAuthorUsername())
+                    .append(": ")
+                    .append(comment.getBody())
+                    .append('\n');
         }
         commentsArea.setText(comments.isEmpty() ? "No comments yet." : comments.toString());
         commentsArea.setCaretPosition(0);
@@ -687,24 +802,115 @@ public class SwingIssueApp extends JFrame {
         ticketPropertiesArea.setText("");
         descriptionArea.setText("");
         commentsArea.setText("");
+        updateActionVisibility();
     }
 
     private Issue selectedIssue() {
+        Issue tableIssue = selectedIssueFromTable();
+        if (tableIssue != null) {
+            selectedIssueId = tableIssue.getId();
+            return tableIssue;
+        }
+        if (selectedIssueId != null) {
+            for (Issue issue : visibleIssues) {
+                if (issue.getId() == selectedIssueId) {
+                    return issue;
+                }
+            }
+            try {
+                return controller.getIssue(selectedIssueId);
+            } catch (RuntimeException ignored) {
+                selectedIssueId = null;
+            }
+        }
+        message("Select an issue first.");
+        return null;
+    }
+
+    private Issue selectedIssueFromTable() {
         int row = issueTable.getSelectedRow();
         if (row < 0) {
-            message("Select an issue first.");
             return null;
         }
         int modelRow = issueTable.convertRowIndexToModel(row);
         if (modelRow < 0 || modelRow >= visibleIssues.size()) {
-            message("Select an issue first.");
             return null;
         }
         return visibleIssues.get(modelRow);
     }
 
+    private Issue currentIssue() {
+        if (selectedIssueId == null) {
+            return null;
+        }
+        for (Issue issue : visibleIssues) {
+            if (issue.getId() == selectedIssueId) {
+                return issue;
+            }
+        }
+        try {
+            return controller.getIssue(selectedIssueId);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
     private String input(String label) {
         return JOptionPane.showInputDialog(this, label);
+    }
+
+    private String workflowAssignee() {
+        return workflowAssigneeField.getText().trim();
+    }
+
+    private String workflowComment() {
+        return workflowCommentArea.getText().trim();
+    }
+
+    private void clearWorkflowInputs() {
+        workflowAssigneeField.setText("");
+        workflowCommentArea.setText("");
+    }
+
+    private void updateActionVisibility() {
+        Issue issue = currentIssue();
+        for (RoleAction action : roleActions) {
+            action.button.setVisible(action.isAvailableFor(currentUser, issue));
+        }
+        resetWorkflowAction();
+        revalidate();
+        repaint();
+    }
+
+    private void selectWorkflowAction(String actionName, boolean needsAssignee, Runnable action) {
+        selectedWorkflowAction = action;
+        workflowModeLabel.setText("Selected action: " + actionName);
+        workflowCommentLabel.setText(actionName + " comment");
+        workflowApplyButton.setText("Apply " + actionName);
+        workflowApplyButton.setEnabled(true);
+        showWorkflowAssigneeInput(needsAssignee);
+        if (!needsAssignee) {
+            workflowAssigneeField.setText("");
+        }
+    }
+
+    private void resetWorkflowAction() {
+        selectedWorkflowAction = null;
+        workflowModeLabel.setText("Choose an action.");
+        workflowCommentLabel.setText("Comment");
+        workflowApplyButton.setText("Apply");
+        workflowApplyButton.setEnabled(false);
+        showWorkflowAssigneeInput(false);
+        clearWorkflowInputs();
+    }
+
+    private void showWorkflowAssigneeInput(boolean visible) {
+        workflowAssigneeLabel.setVisible(visible);
+        workflowAssigneeField.setVisible(visible);
+    }
+
+    private void showStatus(String message) {
+        statusMessageLabel.setText(message);
     }
 
     private void message(String message) {
@@ -736,25 +942,54 @@ public class SwingIssueApp extends JFrame {
         return value == null ? "-" : value;
     }
 
+    private String projectNameOf(Issue issue) {
+        return controller.projects().stream()
+                .filter(project -> project.getId() == issue.getProjectId())
+                .map(Project::getName)
+                .findFirst()
+                .orElse(String.valueOf(issue.getProjectId()));
+    }
+
     private static String latestActivity(Issue issue) {
         if (issue.getComments().isEmpty()) {
             return issue.getReportedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
         }
-        Comment latest = issue.getComments().get(issue.getComments().size() - 1);
+        IssueComment latest = issue.getComments().get(issue.getComments().size() - 1);
         return latest.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
     }
 
     private static class RoleAction {
         private final JButton button;
         private final List<Role> allowedRoles;
+        private final List<IssueStatus> allowedStatuses;
+        private final boolean workflowAction;
 
         private RoleAction(JButton button, Role... allowedRoles) {
+            this(button, null, allowedRoles);
+        }
+
+        private RoleAction(JButton button, IssueStatus[] allowedStatuses, Role... allowedRoles) {
             this.button = button;
             this.allowedRoles = Arrays.asList(allowedRoles);
+            this.allowedStatuses = allowedStatuses == null ? List.of() : Arrays.asList(allowedStatuses);
+            this.workflowAction = allowedStatuses != null;
         }
 
         private boolean allows(Role role) {
             return allowedRoles.contains(role);
+        }
+
+        private boolean isAvailableFor(UserAccount user, Issue issue) {
+            if (user == null || !allows(user.getRole())) {
+                return false;
+            }
+            if (!workflowAction) {
+                return true;
+            }
+            if (issue == null) {
+                return false;
+            }
+            return allowedStatuses.isEmpty() || allowedStatuses.contains(issue.getStatus());
         }
     }
 
