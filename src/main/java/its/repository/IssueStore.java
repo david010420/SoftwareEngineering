@@ -12,6 +12,7 @@ public class IssueStore implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private long nextIssueId = 1L;
+    private long nextUserId = 1L;
     private final List<Project> projects = new ArrayList<>();
     private final List<UserAccount> users = new ArrayList<>();
     private final List<Issue> issues = new ArrayList<>();
@@ -22,6 +23,17 @@ public class IssueStore implements Serializable {
 
     public void setNextIssueId(long nextId) {
         this.nextIssueId = nextId;
+    }
+
+    public long nextUserId() {
+        if (nextUserId == 0L) {
+            nextUserId = 1L;
+        }
+        return nextUserId++;
+    }
+
+    public void setNextUserId(long nextId) {
+        this.nextUserId = nextId;
     }
 
     public List<Project> getProjects() {

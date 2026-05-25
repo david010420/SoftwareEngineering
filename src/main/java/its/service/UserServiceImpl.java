@@ -23,7 +23,7 @@ public class UserServiceImpl implements UserService{
         if (userRepository.existsByUsername(newUsername)) {
             throw new RuntimeException(newUsername);
         }
-        userRepository.save(new UserAccount(newUsername, password, role));
+        userRepository.save(new UserAccount(0L, newUsername, password, role));
     }
 
     private void requireRole(String username, Role required) {

@@ -8,6 +8,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -40,12 +41,17 @@ public class SqliteUserRepository implements UserRepository {
 
     @Override
     public void save(UserAccount user) {
-        final String sql = "INSERT OR REPLACE INTO users (username, password, role) VALUES (?, ?, ?)";
+        final String sql = "INSERT OR REPLACE INTO users (id, username, password, role) VALUES (?, ?, ?, ?)";
         try (Connection conn = connect();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, user.getUsername());
-            ps.setString(2, user.getPassword());
-            ps.setString(3, user.getRole().name());
+            if (user.getId() == 0L) {
+                ps.setNull(1, Types.INTEGER);
+            } else {
+                ps.setLong(1, user.getId());
+            }
+            ps.setString(2, user.getUsername());
+            ps.setString(3, user.getPassword());
+            ps.setString(4, user.getRole().name());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("DB 오류: ", e);
@@ -54,7 +60,7 @@ public class SqliteUserRepository implements UserRepository {
 
     @Override
     public Optional<UserAccount> findByUsername(String username) {
-        final String sql = "SELECT username, password, role FROM users WHERE username = ?";
+        final String sql = "SELECT id, username, password, role FROM users WHERE username = ?";
         try (Connection conn = connect();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);
@@ -68,7 +74,7 @@ public class SqliteUserRepository implements UserRepository {
 
     @Override
     public List<UserAccount> findAll() {
-        final String sql = "SELECT username, password, role FROM users ORDER BY username";
+        final String sql = "SELECT id, username, password, role FROM users ORDER BY username";
         try (Connection conn = connect();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -82,7 +88,7 @@ public class SqliteUserRepository implements UserRepository {
 
     @Override
     public List<UserAccount> findByRole(Role role) {
-        final String sql = "SELECT username, password, role FROM users WHERE role = ? ORDER BY username";
+        final String sql = "SELECT id, username, password, role FROM users WHERE role = ? ORDER BY username";
         try (Connection conn = connect();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, role.name());
@@ -114,6 +120,7 @@ public class SqliteUserRepository implements UserRepository {
 
     private UserAccount mapRow(ResultSet rs) throws SQLException {
         return new UserAccount(
+                rs.getLong("id"),
                 rs.getString("username"),
                 rs.getString("password"),
                 Role.valueOf(rs.getString("role")));
