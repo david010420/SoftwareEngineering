@@ -13,22 +13,19 @@
 @rem See the License for the specific language governing permissions and
 @rem limitations under the License.
 @rem
-@rem SPDX-License-Identifier: Apache-2.0
-@rem
 
-@if "%DEBUG%"=="" @echo off
+@if "%DEBUG%" == "" @echo off
 @rem ##########################################################################
 @rem
 @rem  SE_TermProject startup script for Windows
 @rem
 @rem ##########################################################################
 
-@rem Set local scope for the variables, and ensure extensions are enabled
-setlocal EnableExtensions
+@rem Set local scope for the variables with windows NT shell
+if "%OS%"=="Windows_NT" setlocal
 
 set DIRNAME=%~dp0
-if "%DIRNAME%"=="" set DIRNAME=.
-@rem This is normally unused
+if "%DIRNAME%" == "" set DIRNAME=.
 set APP_BASE_NAME=%~n0
 set APP_HOME=%DIRNAME%..
 
@@ -43,15 +40,15 @@ if defined JAVA_HOME goto findJavaFromJavaHome
 
 set JAVA_EXE=java.exe
 %JAVA_EXE% -version >NUL 2>&1
-if %ERRORLEVEL% equ 0 goto execute
+if "%ERRORLEVEL%" == "0" goto execute
 
-echo. 1>&2
-echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
-echo. 1>&2
-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
-echo location of your Java installation. 1>&2
+echo.
+echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+echo.
+echo Please set the JAVA_HOME variable in your environment to match the
+echo location of your Java installation.
 
-"%COMSPEC%" /c exit 1
+goto fail
 
 :findJavaFromJavaHome
 set JAVA_HOME=%JAVA_HOME:"=%
@@ -59,25 +56,34 @@ set JAVA_EXE=%JAVA_HOME%/bin/java.exe
 
 if exist "%JAVA_EXE%" goto execute
 
-echo. 1>&2
-echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
-echo. 1>&2
-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
-echo location of your Java installation. 1>&2
+echo.
+echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME%
+echo.
+echo Please set the JAVA_HOME variable in your environment to match the
+echo location of your Java installation.
 
-"%COMSPEC%" /c exit 1
+goto fail
 
 :execute
 @rem Setup the command line
 
-set CLASSPATH=%APP_HOME%\lib\SE_TermProject-1.0.0.jar;%APP_HOME%\lib\mysql-connector-j-8.3.0.jar;%APP_HOME%\lib\HikariCP-5.1.0.jar;%APP_HOME%\lib\protobuf-java-3.25.1.jar;%APP_HOME%\lib\slf4j-api-1.7.36.jar
+set CLASSPATH=%APP_HOME%\lib\SE_TermProject-1.0.0.jar;%APP_HOME%\lib\sqlite-jdbc-3.45.3.0.jar;%APP_HOME%\lib\slf4j-api-1.7.36.jar
 
 
 @rem Execute SE_TermProject
-@rem endlocal doesn't take effect until after the line is parsed and variables are expanded
-@rem which allows us to clear the local environment before executing the java command
-endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %SE_TERM_PROJECT_OPTS%  -classpath "%CLASSPATH%" its.ui.swing.SwingIssueApp %* & call :exitWithErrorLevel
+"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %SE_TERM_PROJECT_OPTS%  -classpath "%CLASSPATH%" ui.swing.SwingIssueApp %*
 
-:exitWithErrorLevel
-@rem Use "%COMSPEC%" /c exit to allow operators to work properly in scripts
-"%COMSPEC%" /c exit %ERRORLEVEL%
+:end
+@rem End local scope for the variables with windows NT shell
+if "%ERRORLEVEL%"=="0" goto mainEnd
+
+:fail
+rem Set variable SE_TERM_PROJECT_EXIT_CONSOLE if you need the _script_ return code instead of
+rem the _cmd.exe /c_ return code!
+if  not "" == "%SE_TERM_PROJECT_EXIT_CONSOLE%" exit 1
+exit /b 1
+
+:mainEnd
+if "%OS%"=="Windows_NT" endlocal
+
+:omega

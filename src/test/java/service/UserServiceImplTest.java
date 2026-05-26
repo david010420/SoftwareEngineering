@@ -14,6 +14,7 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,10 +29,10 @@ class UserServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        // ADMIN 계정 조회 stubbing
+        // ADMIN 계정 조회 stubbing (테스트마다 사용 여부가 달라 lenient 처리)
         UserAccount admin = new UserAccount(1L, "admin", "pw", Role.ADMIN);
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
-        when(userRepository.existsByUsername("admin")).thenReturn(true);
+        lenient().when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
+        lenient().when(userRepository.existsByUsername("admin")).thenReturn(true);
     }
 
     // register 성공
