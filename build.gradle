@@ -32,19 +32,19 @@ tasks.withType(JavaCompile) {
 }
 
 application {
-    mainClass = 'its.ui.swing.SwingIssueApp'
+    mainClass = 'ui.swing.SwingIssueApp'
 }
 
 task runSwing(type: JavaExec) {
     group = 'application'
     description = 'Run Swing UI'
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'its.ui.swing.SwingIssueApp'
+    mainClass = 'ui.swing.SwingIssueApp'
 }
 
 task runAWT(type: JavaExec) {
     group = 'application'
     description = 'Run AWT UI'
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'its.ui.awt.AwtIssueApp'
+    mainClass = 'ui.awt.AwtIssueApp'
 }
