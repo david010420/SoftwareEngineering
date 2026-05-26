@@ -27,27 +27,38 @@ public class TFRecommendServiceTest {
 
     @Test
     void cal_이슈가존재하지않으면_종료() {
-        when(issueRepository.findByProjectId("proj1")).thenReturn(List.of());
-        assertDoesNotThrow(() -> service.cal("proj1"));
+        when(issueRepository.findByProjectId(1L)).thenReturn(List.of());
+        assertDoesNotThrow(() -> service.cal(1L));
     }
 
     @Test
     void cal_NEW상태만존재한다면_종료() {
-        when(issueRepository.findByProjectId("proj1"))
+        when(issueRepository.findByProjectId(1L))
                 .thenReturn(List.of(newIssue(1L), newIssue(2L)));
-        assertDoesNotThrow(() -> service.cal("proj1"));
+        assertDoesNotThrow(() -> service.cal(1L));
     }
 
     @Test
     void cal_fixer없는이슈만있다면_종료() {
         Issue issue = newIssue(1L);
-        issue.changeStatus(IssueStatus.RESOLVED);
-        when(issueRepository.findByProjectId("proj1")).thenReturn(List.of(issue));
-        assertDoesNotThrow(() -> service.cal("proj1"));
+        issue.setStatus(IssueStatus.RESOLVED);
+        when(issueRepository.findByProjectId(1L)).thenReturn(List.of(issue));
+        assertDoesNotThrow(() -> service.cal(1L));
     }
 
     private Issue newIssue(long id) {
-        return new Issue(id, "proj1", String.valueOf(id), "제목" + id, "설명" + id,
-                "tester1", LocalDateTime.now(), Priority.MAJOR);
+        return new Issue(
+                id,
+                1L,
+                String.valueOf(id),
+                "제목" + id,
+                "설명" + id,
+                LocalDateTime.now(),
+                null,
+                null,
+                Priority.MAJOR,
+                IssueStatus.NEW,
+                null
+        );
     }
 }

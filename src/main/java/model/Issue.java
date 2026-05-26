@@ -10,55 +10,49 @@ import java.util.Objects;
 public class Issue implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private final long id;
-    private String projectName;
-
-    private String projectId;
+    private long id;
+    private long projectId;
     private String title;
     private String description;
-    private String reporter;
-    private LocalDateTime reportedDate;
-    private String fixer;
-    private String assignee;
+    private String reporterUsername;
+    private LocalDateTime reportedAt;
+    private String fixerUsername;
+    private String assigneeUsername;
     private Priority priority;
     private IssueStatus status;
-    private final List<Comment> comments = new ArrayList<>();
+    private List<IssueComment> comments;
 
-    public Issue(long id, String projectName, String projectId, String title, String description, String reporter,
-                 LocalDateTime reportedDate, Priority priority) {
-        if (title == null || title.isBlank()) {
-            throw new IllegalArgumentException("title is required");
-        }
-        if (description == null || description.isBlank()) {
-            throw new IllegalArgumentException("description is required");
-        }
+    public Issue(long id, long projectId, String title, String description, String reporterUsername,
+                 LocalDateTime reportedAt, String fixerUsername, String assigneeUsername,
+                 Priority priority, IssueStatus status, List<IssueComment> comments) {
         this.id = id;
-        this.projectName = requireText(projectName, "projectName");
         this.projectId = projectId;
-        this.title = title.trim();
-        this.description = description.trim();
-        this.reporter = requireText(reporter, "reporter");
-        this.reportedDate = Objects.requireNonNull(reportedDate, "reportedDate");
+        this.title = requireText(title, "title");
+        this.description = requireText(description, "description");
+        this.reporterUsername = requireText(reporterUsername, "reporterUsername");
+        this.reportedAt = Objects.requireNonNull(reportedAt, "reportedAt");
+        this.fixerUsername = normalizeNullable(fixerUsername);
+        this.assigneeUsername = normalizeNullable(assigneeUsername);
         this.priority = priority == null ? Priority.MAJOR : priority;
-        this.status = IssueStatus.NEW;
+        this.status = status == null ? IssueStatus.NEW : status;
+        this.comments = new ArrayList<>(comments == null ? Collections.emptyList() : comments);
     }
 
-    private static String requireText(String value, String field) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(field + " is required");
-        }
-        return value.trim();
+    // 신규 이슈 등록용 팩토리: id는 저장 시 채워지고 상태는 NEW로 시작한다.
+    public static Issue report(long projectId, String title, String description, String reporterUsername, Priority priority) {
+        return new Issue(0L, projectId, title, description, reporterUsername,
+                LocalDateTime.now(), null, null, priority, IssueStatus.NEW, new ArrayList<>());
     }
 
     public long getId() {
         return id;
     }
 
-    public String getProjectName() {
-        return projectName;
+    public void setId(long id) {
+        this.id = id;
     }
 
-    public String getProjectId() {
+    public long getProjectId() {
         return projectId;
     }
 
@@ -70,20 +64,48 @@ public class Issue implements Serializable {
         return description;
     }
 
+    public String getReporterUsername() {
+        return reporterUsername;
+    }
+
+    // UI/통계 코드 호환용 alias
     public String getReporter() {
-        return reporter;
+        return reporterUsername;
     }
 
+    public LocalDateTime getReportedAt() {
+        return reportedAt;
+    }
+
+    // UI/통계 코드 호환용 alias
     public LocalDateTime getReportedDate() {
-        return reportedDate;
+        return reportedAt;
     }
 
+    public String getFixerUsername() {
+        return fixerUsername;
+    }
+
+    // UI 코드 호환용 alias
     public String getFixer() {
-        return fixer;
+        return fixerUsername;
     }
 
+    public void setFixerUsername(String fixerUsername) {
+        this.fixerUsername = normalizeNullable(fixerUsername);
+    }
+
+    public String getAssigneeUsername() {
+        return assigneeUsername;
+    }
+
+    // UI 코드 호환용 alias
     public String getAssignee() {
-        return assignee;
+        return assigneeUsername;
+    }
+
+    public void setAssigneeUsername(String assigneeUsername) {
+        this.assigneeUsername = normalizeNullable(assigneeUsername);
     }
 
     public Priority getPriority() {
@@ -94,36 +116,35 @@ public class Issue implements Serializable {
         return status;
     }
 
-    public List<Comment> getComments() {
-        return Collections.unmodifiableList(comments);
-    }
-
-    public void assignTo(String assignee) {
-        this.assignee = requireText(assignee, "assignee");
-        this.status = IssueStatus.ASSIGNED;
-    }
-
-    public void markFixed(String fixer) {
-        this.fixer = requireText(fixer, "fixer");
-        this.status = IssueStatus.FIXED;
-    }
-
-    public void changeStatus(IssueStatus status) {
+    public void setStatus(IssueStatus status) {
         this.status = Objects.requireNonNull(status, "status");
     }
 
-    public void addComment(Comment comment) {
+    public List<IssueComment> getComments() {
+        return Collections.unmodifiableList(comments);
+    }
+
+    public void setComments(List<IssueComment> comments) {
+        this.comments = new ArrayList<>(comments == null ? Collections.emptyList() : comments);
+    }
+
+    public void addComment(IssueComment comment) {
         comments.add(Objects.requireNonNull(comment, "comment"));
     }
 
-    public boolean containsText(String query) {
-        if (query == null || query.isBlank()) {
-            return true;
+    private static String requireText(String value, String fieldName) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " is required");
         }
-        String q = query.toLowerCase();
-        return title.toLowerCase().contains(q)
-                || description.toLowerCase().contains(q)
-                || comments.stream().anyMatch(c -> c.getMessage().toLowerCase().contains(q));
+        return value.trim();
+    }
+
+    private static String normalizeNullable(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @Override

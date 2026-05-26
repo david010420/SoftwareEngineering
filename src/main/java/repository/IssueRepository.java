@@ -1,30 +1,44 @@
 package repository;
 
-import model.Issue;
-import model.Project;
-import model.UserAccount;
-
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+import model.Issue;
+import model.IssueComment;
+import model.IssueStatus;
+import model.Priority;
+
 public interface IssueRepository {
-    IssueStore load();
+    void initialize();
 
-    void save(IssueStore store);
+    Issue save(Issue issue);
 
-    default List<Issue> issues() {
-        return load().getIssues();
-    }
+    void update(Issue issue);
 
-    default List<UserAccount> users() {
-        return load().getUsers();
-    }
+    Optional<Issue> findById(long id);
 
-    default List<Project> projects() {
-        return load().getProjects();
-    }
+    List<Issue> findAll();
 
-    List<Issue> findByProjectId(String id);
+    List<Issue> findByProjectId(long projectId);
 
-    Optional<Issue> findById(String id);
+    List<Issue> findByReporterUsername(String reporterUsername);
+
+    List<Issue> findByAssigneeUsername(String assigneeUsername);
+
+    List<Issue> findByStatus(IssueStatus status);
+
+    List<Issue> findByPriority(Priority priority);
+
+    List<Issue> searchByKeyword(String keyword);
+
+    IssueComment addComment(long issueId, IssueComment comment);
+
+    List<IssueComment> findCommentsByIssueId(long issueId);
+
+    Map<LocalDate, Long> countReportedByDay();
+
+    Map<YearMonth, Long> countReportedByMonth();
 }

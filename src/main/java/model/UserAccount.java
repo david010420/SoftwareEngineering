@@ -25,6 +25,11 @@ public class UserAccount implements Serializable {
         this.role = Objects.requireNonNull(role, "role");
     }
 
+    // id는 저장 시 채워지므로, 신규 계정 생성 시에는 0으로 위임한다.
+    public UserAccount(String username, String password, Role role) {
+        this(0L, username, password, role);
+    }
+
     public long getId() {
         return id;
     }
@@ -37,9 +42,11 @@ public class UserAccount implements Serializable {
         return role;
     }
 
-    public String getPassword() {return password;}
+    public String getPassword() {
+        return password;
+    }
 
-    //로그인용
+    // 로그인용
     public boolean checkPassword(String raw) {
         return password.equals(raw);
     }

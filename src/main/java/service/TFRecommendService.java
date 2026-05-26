@@ -13,19 +13,19 @@ public class TFRecommendService implements RecommendService {
     private final IssueRepository issueRepository;
 
     //idfTable에서 계산해 놓은 값들
-    private final Map<String, List<IndexEntry>> index = new ConcurrentHashMap<>();
+    private final Map<Long, List<IndexEntry>> index = new ConcurrentHashMap<>();
 
     /** 프로젝트별 단어 점수 저장 projectId, 단어, 점수 순서*/
-    private final Map<String, Map<String, Double>> idfTable = new ConcurrentHashMap<>();
+    private final Map<Long, Map<String, Double>> idfTable = new ConcurrentHashMap<>();
 
     public TFRecommendService(IssueRepository issueRepository) {
         this.issueRepository = issueRepository;
     }
 
     @Override
-    public List<String> recommendUser(String issueId, int topN) {
-        Issue target = issueRepository.findById(issueId).orElseThrow(() -> new RuntimeException(issueId));
-        String projectId = target.getProjectId();
+    public List<String> recommendUser(Long issueId, int topN) {
+        Issue target = issueRepository.findById(issueId).orElseThrow(() -> new RuntimeException(String.valueOf(issueId)));
+        Long projectId = target.getProjectId();
         if (!index.containsKey(projectId)) {
             cal(projectId);
         }
@@ -34,7 +34,7 @@ public class TFRecommendService implements RecommendService {
     }
 
     @Override
-    public void cal(String projectId) {
+    public void cal(Long projectId) {
         List<Issue> issueList = issueRepository.findByProjectId(projectId).stream()
                 .filter(i -> i.getStatus() == IssueStatus.RESOLVED || i.getStatus() == IssueStatus.CLOSED)
                 .filter(i -> i.getFixer() != null).toList();

@@ -31,12 +31,12 @@ scripts/run-awt.ps1
 요구사항의 UI와 응용 로직 분리 조건을 만족하도록 계층을 분리했다.
 
 - `model`: `Issue`, `Comment`, `UserAccount`, `Project`, `Role`, `Priority`, `IssueStatus`
-- `repository`: `FileIssueRepository`, `IssueStore`
-- `service`: `IssueService`, `IssueSearchCriteria`, `IssueStatistics`
-- `controller`: `IssueController`
+- `repository`: `FileIssueRepository`, `FileUserRepository`, `IssueStore`
+- `service`: `IssueService`, `UserService`, `UserServiceImpl`, `IssueSearchCriteria`, `IssueStatistics`
+- `controller`: `IssueController`, `UserController`
 - `ui`: `SwingIssueApp`, `AwtIssueApp`
 
-두 UI는 비즈니스 로직을 직접 갖지 않고 동일한 `IssueController`를 호출한다. 따라서 UI를 바꾸더라도 model/service/repository 계층은 재사용 가능하다.
+두 UI는 비즈니스 로직을 직접 갖지 않고 controller를 통해 service를 호출한다. 이슈 기능은 `IssueController`, 사용자 기능은 `UserController`를 사용하므로 UI를 바꾸더라도 model/service/repository 계층은 재사용 가능하다.
 
 ### 1.3 영속 저장
 
@@ -63,7 +63,10 @@ scripts/run-awt.ps1
 구현된 주요 기능은 다음과 같다.
 
 - 계정 추가
+- 프로젝트 추가
+  - admin 계정의 `Reports & Admin` 탭에서 `Add Project` 가능
 - 이슈 등록
+  - tester 계정의 `New Issue` 탭에서 프로젝트 선택 가능
   - `title`, `description` 필수
   - `reporter` 저장
   - `reported date` 자동 저장
@@ -75,6 +78,7 @@ scripts/run-awt.ps1
   - reporter
   - assignee
   - status
+  - 데모용 quick filter: All, NEW, Mine, Reported, FIXED, RESOLVED
 - 이슈 상세 정보 확인
   - 제목, 설명, reporter, reported date, priority, status, assignee, fixer, comments
 - 코멘트 추가
@@ -138,7 +142,37 @@ powershell -ExecutionPolicy Bypass -File scripts/run-awt.ps1
 
 두 UI 모두 동일한 controller/service/model/repository를 재사용한다.
 
-### 1.9 테스트
+Swing UI는 Trac의 ticket browser/detail 화면을 참고하여 다음 구조로 개선했다.
+
+- 왼쪽: ticket query 필터와 ticket 목록
+- 오른쪽: ticket 상세 화면
+- 상세 화면: ticket 제목, properties, description, change history 영역 분리
+- 하단: ticket actions 버튼 그룹
+
+### 1.9 로그인 기능
+
+Swing UI 시작 시 아이디/비밀번호 입력 기반 로그인 다이얼로그가 먼저 표시되도록 구현했다.
+
+- 앱 시작 시 username/password 직접 입력 후 로그인
+- 데모 계정의 공통 비밀번호는 `1234`
+- 로그인 취소 시 앱 종료
+- 로그인 성공 전에는 메인 화면을 표시하지 않음
+- 실행 중 `Switch User` 버튼으로 다른 계정 로그인
+- 로그인 상태 라벨 표시
+- 로그인 전에는 Browse 탭만 표시
+- 로그인 후에는 role에 따라 사용할 수 있는 탭과 버튼만 표시
+- 이슈 생성 시 reporter는 로그인한 계정으로 자동 저장
+- 댓글 작성자는 로그인한 계정으로 자동 저장
+- assign/fix/status 변경 actor도 로그인한 계정으로 자동 처리
+- `Add User`, `Add Project`는 admin 계정만 가능
+- `Assign`, `Close`는 PL 계정만 가능
+- `Fix`는 dev 계정만 가능
+- `New Issue`, `Resolve`, `Reopen`은 tester 계정에서 표시
+- `Recommend Assignee`는 PL 계정에서 표시
+- `Stats`는 admin/PL 계정에서 표시
+- 추천 결과와 통계 결과는 `Reports & Admin` 탭 안의 결과 영역에 표시
+
+### 1.10 테스트
 
 모델/서비스 흐름 검증용 테스트 하네스를 작성했다.
 
@@ -314,10 +348,8 @@ powershell -ExecutionPolicy Bypass -File scripts/run-awt.ps1
 
 현재 기능 데모 중심의 UI이므로, 최종 발표 전에 아래를 보완하면 좋다.
 
-- 로그인/현재 사용자 선택 기능
-- 프로젝트 추가 화면
-- priority 선택 UI
 - 상태 전이 권한 검증 강화
+- priority 선택 UI
 - 통계 그래프 시각화
 - AWT UI의 입력 기능 확대
 
@@ -329,7 +361,8 @@ powershell -ExecutionPolicy Bypass -File scripts/run-awt.ps1
 - [ ] 발표 슬라이드 작성
 - [ ] 소개/데모 영상 제작
 - [ ] JUnit 테스트 코드 보완
-- [ ] Swing UI 실행 캡처
+- [ ] Swing UI 로그인 화면 및 실행 화면 캡처
+- [ ] Recommendation Result 및 Statistics Result 화면 캡처
 - [ ] AWT UI 실행 캡처
 - [ ] 테스트 실행 결과 캡처
 - [ ] GitHub commit history 캡처
