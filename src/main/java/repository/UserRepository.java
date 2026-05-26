@@ -8,6 +8,8 @@ import java.util.Optional;
 
 public interface UserRepository {
 
+    void initialize();
+
     boolean existsByUsername(String username);
 
     void save(UserAccount userAccount);

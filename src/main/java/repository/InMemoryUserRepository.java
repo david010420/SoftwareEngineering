@@ -14,6 +14,11 @@ public class InMemoryUserRepository implements UserRepository {
     private final Map<String, UserAccount> users = new LinkedHashMap<>();
 
     @Override
+    public void initialize() {
+        // 메모리 저장소는 별도 준비 과정이 필요 없다.
+    }
+
+    @Override
     public boolean existsByUsername(String username) {
         return findByUsername(username).isPresent();
     }

@@ -16,6 +16,11 @@ public class FileUserRepository implements UserRepository {
     }
 
     @Override
+    public void initialize() {
+        FileStore.save(path, FileStore.load(path));
+    }
+
+    @Override
     public boolean existsByUsername(String username) {
         return findByUsername(username).isPresent();
     }

@@ -8,6 +8,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +24,22 @@ public class SqliteUserRepository implements UserRepository {
 
     private Connection connect() throws SQLException {
         return DriverManager.getConnection(url);
+    }
+
+    @Override
+    public void initialize() {
+        final String sql = "CREATE TABLE IF NOT EXISTS users ("
+                + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + "username TEXT NOT NULL UNIQUE,"
+                + "password TEXT NOT NULL,"
+                + "role TEXT NOT NULL"
+                + ")";
+        try (Connection conn = connect();
+             Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            throw new RuntimeException("DB 오류: ", e);
+        }
     }
 
     @Override
