@@ -15,7 +15,6 @@ public class InMemoryUserRepository implements UserRepository {
 
     @Override
     public void initialize() {
-        // 메모리 저장소는 별도 준비 과정이 필요 없다.
     }
 
     @Override
