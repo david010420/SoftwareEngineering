@@ -30,7 +30,62 @@ public class TFRecommendService implements RecommendService {
             cal(projectId);
         }
 
-        return List.of();
+        List<IndexEntry> entries = index.getOrDefault(projectId, List.of());
+        if (entries.isEmpty()) {
+            return List.of();   // 학습할 해결 이슈가 없음
+        }
+
+        // 1) 타깃 이슈의 TF-IDF 벡터 계산
+        Map<String, Double> idf = idfTable.getOrDefault(projectId, Map.of());
+        List<String> targetTokens =
+                tokenize(target.getTitle() + " " + target.getDescription());
+        Map<String, Double> targetVector = computeTfIdf(targetTokens, idf);
+
+        if (targetVector.isEmpty()) {
+            return List.of();
+        }
+
+        // 2) 각 기존 이슈와 코사인 유사도 계산 → fixer별 최고 점수 집계
+        Map<String, Double> scoreByFixer = new HashMap<>();
+        for (IndexEntry entry : entries) {
+            double sim = cosineSimilarity(targetVector, entry.tfidfVector);
+            if (sim <= 0) continue;
+            scoreByFixer.merge(entry.fixer, sim, Math::max);
+        }
+
+        // 3) 점수 내림차순 정렬 후 상위 topN fixer 반환
+        return scoreByFixer.entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .limit(topN)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+    }
+
+    // 코사인 유사도
+    private double cosineSimilarity(Map<String, Double> a, Map<String, Double> b) {
+        // 예외 처리
+        if (a.isEmpty() || b.isEmpty()) return 0.0;
+
+        // 더 작은 맵을 순회해서 내적 계산
+        Map<String, Double> smaller = a.size() <= b.size() ? a : b;
+        Map<String, Double> larger  = a.size() <= b.size() ? b : a;
+
+        double dot = 0.0;
+        for (Map.Entry<String, Double> e : smaller.entrySet()) {
+            Double other = larger.get(e.getKey());
+            if (other != null) dot += e.getValue() * other;
+        }
+
+        double normA = norm(a);
+        double normB = norm(b);
+        if (normA == 0 || normB == 0) return 0.0;
+        return dot / (normA * normB);
+    }
+
+    private double norm(Map<String, Double> vector) {
+        double sum = 0.0;
+        for (double v : vector.values()) sum += v * v;
+        return Math.sqrt(sum);
     }
 
     @Override
@@ -63,18 +118,6 @@ public class TFRecommendService implements RecommendService {
         index.put(projectId, entries);
     }
 
-    private static final class IndexEntry {
-        final String              fixer;
-        final Map<String, Double> tfidfVector;
-
-        IndexEntry(String fixer, Map<String, Double> tfidfVector) {
-            this.fixer       = fixer;
-            this.tfidfVector = tfidfVector;
-        }
-
-        public String getFixer() {return fixer;}
-    }
-
     //들어온 텍스트를 분리한다.
     private List<String> tokenize(String text) {
         if (text == null || text.isBlank()) return Collections.emptyList();
@@ -83,11 +126,11 @@ public class TFRecommendService implements RecommendService {
                 .collect(Collectors.toList());
     }
 
-    //
     private Map<String, Double> computeIdf(List<List<String>> corpus) {
         int N = corpus.size();
         Map<String, Integer> df = new HashMap<>();
 
+        //이슈에 들어있는 단어들의 빈도를 계산한다.
         for (List<String> doc : corpus) {
             Set<String> uniqueTerms = new HashSet<>(doc);
             for (String term : uniqueTerms) {
@@ -99,6 +142,7 @@ public class TFRecommendService implements RecommendService {
             }
         }
 
+        //단어의 IDF값을 계산한다. 자주 사용되는 단어는 판별력을 줄인다.
         Map<String, Double> idf = new HashMap<>();
         for (Map.Entry<String, Integer> entry : df.entrySet()) {
             String term = entry.getKey();
@@ -108,7 +152,6 @@ public class TFRecommendService implements RecommendService {
 
         return idf;
     }
-
     //단어의 빈도를 게산
     private Map<String, Double> computeTf(List<String> tokens) {
         //비었으면 바로 반환
@@ -124,7 +167,7 @@ public class TFRecommendService implements RecommendService {
         }
 
         //각 토큰별로 가중치 계산
-        double total = tokens.size();
+        double total = tokens.size();       //문서 전체에서 어느 빈도로 나왔는가
         Map<String, Double> tf = new HashMap<>();
         for (Map.Entry<String, Long> entry : freq.entrySet()) {
             String term = entry.getKey();
@@ -133,7 +176,6 @@ public class TFRecommendService implements RecommendService {
         }
         return tf;
     }
-
     private Map<String, Double> computeTfIdf(List<String> tokens,
                                              Map<String, Double> idf) {
         Map<String, Double> tf = computeTf(tokens);
@@ -144,4 +186,16 @@ public class TFRecommendService implements RecommendService {
         });
         return tfidf;
     }
+
+    private static final class IndexEntry {
+        final String fixer;
+        final Map<String, Double> tfidfVector;
+
+        IndexEntry(String fixer, Map<String, Double> tfidfVector) {
+            this.fixer       = fixer;
+            this.tfidfVector = tfidfVector;
+        }
+    }
+
 }
+

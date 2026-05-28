@@ -20,6 +20,8 @@ public interface IssueRepository {
 
     Optional<Issue> findById(long id);
 
+
+
     List<Issue> findAll();
 
     List<Issue> findByProjectId(long projectId);
