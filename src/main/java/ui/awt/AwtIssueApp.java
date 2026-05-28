@@ -2,6 +2,7 @@ package its.ui.awt;
 
 import app.AppFactory;
 import controller.IssueController;
+import controller.ProjectController;
 import controller.UserController;
 import model.Issue;
 import model.IssueStatus;
@@ -34,6 +35,7 @@ import java.util.Map;
 
 public class AwtIssueApp extends Frame {
     private final IssueController controller;
+    private final ProjectController projectController;
     private final UserController userController;
     private final List issueList = new List();
     private final TextArea details = new TextArea();
@@ -67,9 +69,10 @@ public class AwtIssueApp extends Frame {
     private java.util.List<Issue> currentIssues;
     private UserAccount currentUser;
 
-    public AwtIssueApp(IssueController controller, UserController userController) {
+    public AwtIssueApp(IssueController controller, ProjectController projectController, UserController userController) {
         super("Issue Management System - AWT");
         this.controller = controller;
+        this.projectController = projectController;
         this.userController = userController;
         setSize(1180, 760);
         buildUi();
@@ -285,7 +288,8 @@ public class AwtIssueApp extends Frame {
 
     private void newIssue() {
         requireRole(Role.TESTER, "Only tester can create issues.");
-        controller.createIssue(projectChoice.getSelectedItem(), title.getText(), description.getText(), currentUser.getUsername(), Priority.valueOf(priority.getSelectedItem()));
+        Project selectedProject = selectedProject();
+        controller.createIssue(selectedProject.getId(), title.getText(), description.getText(), currentUser.getUsername(), Priority.valueOf(priority.getSelectedItem()));
         refresh(controller.issues());
         showMessage("Issue created.");
     }
@@ -420,7 +424,7 @@ public class AwtIssueApp extends Frame {
 
     private void addProject() {
         requireRole(Role.ADMIN, "Only admin can add projects.");
-        controller.addProject(adminProject.getText());
+        projectController.createProject(adminProject.getText());
         refreshProjectChoices();
         showMessage("Project added.");
     }
@@ -428,12 +432,21 @@ public class AwtIssueApp extends Frame {
     private void refreshProjectChoices() {
         String selected = projectChoice.getSelectedItem();
         projectChoice.removeAll();
-        for (Project project : controller.projects()) {
+        for (Project project : projectController.findAllProjects()) {
             projectChoice.add(project.getName());
             if (selected != null && selected.equalsIgnoreCase(project.getName())) {
                 projectChoice.select(project.getName());
             }
         }
+    }
+
+    private Project selectedProject() {
+        int index = projectChoice.getSelectedIndex();
+        java.util.List<Project> projects = projectController.findAllProjects();
+        if (index < 0 || index >= projects.size()) {
+            throw new IllegalStateException("Project is required.");
+        }
+        return projects.get(index);
     }
 
     private void updateActionVisibility() {
@@ -508,7 +521,10 @@ public class AwtIssueApp extends Frame {
 
     public static void main(String[] args) {
         AppFactory.Controllers controllers = AppFactory.createControllers();
-        new AwtIssueApp(controllers.issueController(), controllers.userController()).setVisible(true);
+        new AwtIssueApp(
+                controllers.issueController(),
+                controllers.projectController(),
+                controllers.userController()).setVisible(true);
     }
 
     private static class RoleAction {

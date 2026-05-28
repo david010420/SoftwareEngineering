@@ -24,6 +24,10 @@ public interface IssueRepository {
 
     List<Issue> findByProjectId(long projectId);
 
+    void delete(long id);
+
+    int deleteByProjectId(long projectId);
+
     List<Issue> findByReporterUsername(String reporterUsername);
 
     List<Issue> findByAssigneeUsername(String assigneeUsername);

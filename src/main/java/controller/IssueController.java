@@ -12,28 +12,20 @@ import model.Issue;
 import model.IssueComment;
 import model.IssueStatus;
 import model.Priority;
-import model.Project;
 import service.IssueService;
 import service.IssueStatistics;
-import service.ProjectService;
 import service.RecommendService;
 
 public class IssueController {
     private final IssueService service;
-    private final ProjectService projectService;
     private final RecommendService recommendService;
 
     public IssueController(IssueService service) {
-        this(service, null, null);
+        this(service, null);
     }
 
-    public IssueController(IssueService service, ProjectService projectService) {
-        this(service, projectService, null);
-    }
-
-    public IssueController(IssueService service, ProjectService projectService, RecommendService recommendService) {
+    public IssueController(IssueService service, RecommendService recommendService) {
         this.service = Objects.requireNonNull(service, "service");
-        this.projectService = projectService;
         this.recommendService = recommendService;
     }
 
@@ -41,9 +33,8 @@ public class IssueController {
         return service.reportIssue(projectId, title, description, reporterUsername, priority);
     }
 
-    public Issue createIssue(String projectName, String title, String description, String reporterUsername, Priority priority) {
-        Project project = findProjectByName(projectName);
-        return reportIssue(project.getId(), title, description, reporterUsername, priority);
+    public Issue createIssue(long projectId, String title, String description, String reporterUsername, Priority priority) {
+        return reportIssue(projectId, title, description, reporterUsername, priority);
     }
 
     public Issue getIssue(long issueId) {
@@ -56,18 +47,6 @@ public class IssueController {
 
     public List<Issue> findAllIssues() {
         return service.findAllIssues();
-    }
-
-    public List<Project> projects() {
-        if (projectService == null) {
-            return Collections.emptyList();
-        }
-        return projectService.findAllProjects();
-    }
-
-    public Project addProject(String name) {
-        requireProjectService();
-        return projectService.createProject(name);
     }
 
     public List<Issue> findIssuesByProjectId(long projectId) {
@@ -161,24 +140,6 @@ public class IssueController {
             return Collections.emptyList();
         }
         return recommendService.recommendUser(issueId, 3);
-    }
-
-    private Project findProjectByName(String projectName) {
-        requireProjectService();
-        String normalizedProjectName = normalize(projectName);
-        if (normalizedProjectName == null) {
-            throw new IllegalArgumentException("projectName is required");
-        }
-        return projectService.findAllProjects().stream()
-                .filter(project -> project.getName().equalsIgnoreCase(normalizedProjectName))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unknown project: " + projectName));
-    }
-
-    private void requireProjectService() {
-        if (projectService == null) {
-            throw new IllegalStateException("ProjectService is required for project operations.");
-        }
     }
 
     private static boolean containsKeyword(Issue issue, String keyword) {

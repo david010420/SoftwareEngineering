@@ -22,7 +22,13 @@ public class ProjectService {
     }
 
     public Project createProject(String name) {
-        return repository.save(Project.create(name));
+        String normalizedName = requireText(name, "name");
+        boolean exists = repository.findAll().stream()
+                .anyMatch(project -> project.getName().equalsIgnoreCase(normalizedName));
+        if (exists) {
+            throw new IllegalArgumentException("Project already exists: " + normalizedName);
+        }
+        return repository.save(Project.create(normalizedName));
     }
 
     public Project getProject(long id) {
@@ -37,11 +43,37 @@ public class ProjectService {
                 .collect(Collectors.toList());
     }
 
+    public Project findByName(String name) {
+        String normalizedName = requireText(name, "name");
+        return repository.findAll().stream()
+                .filter(project -> project.getName().equalsIgnoreCase(normalizedName))
+                .findFirst()
+                .map(this::loadIssues)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown project: " + name));
+    }
+
+    public void deleteProject(long projectId) {
+        if (!repository.exists(projectId)) {
+            throw new IllegalArgumentException("Unknown project: " + projectId);
+        }
+        if (issueRepository != null) {
+            issueRepository.deleteByProjectId(projectId);
+        }
+        repository.delete(projectId);
+    }
+
     private Project loadIssues(Project project) {
         if (issueRepository == null) {
             return project;
         }
         project.setIssues(issueRepository.findByProjectId(project.getId()));
         return project;
+    }
+
+    private static String requireText(String value, String fieldName) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return value.trim();
     }
 }

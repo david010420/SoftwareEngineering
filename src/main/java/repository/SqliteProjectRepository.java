@@ -93,6 +93,17 @@ public class SqliteProjectRepository implements ProjectRepository {
         }
     }
 
+    @Override
+    public void delete(long id) {
+        String sql = "DELETE FROM projects WHERE id = ?";
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, id);
+            statement.executeUpdate();
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed to delete project", exception);
+        }
+    }
+
     private Connection connect() throws SQLException {
         return DriverManager.getConnection("jdbc:sqlite:" + databasePath.toAbsolutePath());
     }

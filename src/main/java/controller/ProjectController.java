@@ -24,4 +24,12 @@ public class ProjectController {
     public List<Project> findAllProjects() {
         return service.findAllProjects();
     }
+
+    public Project findByName(String name) {
+        return service.findByName(name);
+    }
+
+    public void deleteProject(long projectId) {
+        service.deleteProject(projectId);
+    }
 }

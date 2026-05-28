@@ -128,6 +128,30 @@ public class SqliteIssueRepository implements IssueRepository {
     }
 
     @Override
+    public void delete(long id) {
+        String sql = "DELETE FROM issues WHERE id = ?";
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, id);
+            if (statement.executeUpdate() == 0) {
+                throw new IssueNotFoundException(id);
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed to delete issue", exception);
+        }
+    }
+
+    @Override
+    public int deleteByProjectId(long projectId) {
+        String sql = "DELETE FROM issues WHERE project_id = ?";
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, projectId);
+            return statement.executeUpdate();
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed to delete issues by projectId", exception);
+        }
+    }
+
+    @Override
     public List<Issue> findByReporterUsername(String reporterUsername) {
         return findBySql("SELECT * FROM issues WHERE reporter_username = ? ORDER BY reported_at DESC", reporterUsername);
     }

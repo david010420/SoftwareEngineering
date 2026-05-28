@@ -121,6 +121,21 @@ public class InMemoryIssueRepository implements IssueRepository {
     }
 
     @Override
+    public void delete(long id) {
+        issues.remove(id);
+    }
+
+    @Override
+    public int deleteByProjectId(long projectId) {
+        List<Long> ids = issues.values().stream()
+                .filter(issue -> issue.getProjectId() == projectId)
+                .map(Issue::getId)
+                .toList();
+        ids.forEach(issues::remove);
+        return ids.size();
+    }
+
+    @Override
     public Map<LocalDate, Long> countReportedByDay() {
         return issues.values().stream()
                 .collect(Collectors.groupingBy(issue -> issue.getReportedAt().toLocalDate(), LinkedHashMap::new, Collectors.counting()));

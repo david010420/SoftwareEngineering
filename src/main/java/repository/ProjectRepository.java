@@ -14,6 +14,8 @@ public interface ProjectRepository {
 
     List<Project> findAll();
 
+    void delete(long id);
+
     default boolean exists(long id) {
         return findById(id).isPresent();
     }

@@ -34,4 +34,9 @@ public class InMemoryProjectRepository implements ProjectRepository {
     public List<Project> findAll() {
         return new ArrayList<>(projects.values());
     }
+
+    @Override
+    public void delete(long id) {
+        projects.remove(id);
+    }
 }

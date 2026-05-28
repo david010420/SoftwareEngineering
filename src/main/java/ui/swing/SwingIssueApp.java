@@ -2,6 +2,7 @@ package ui.swing;
 
 import app.AppFactory;
 import controller.IssueController;
+import controller.ProjectController;
 import controller.UserController;
 import model.Issue;
 import model.IssueComment;
@@ -41,6 +42,7 @@ import java.util.List;
 
 public class SwingIssueApp extends JFrame {
     private final IssueController controller;
+    private final ProjectController projectController;
     private final UserController userController;
     private final DefaultTableModel issueTableModel = new DefaultTableModel(
             new String[]{"ID", "Project", "Status", "Priority", "Title", "Assignee", "Reporter", "Updated"}, 0) {
@@ -83,9 +85,10 @@ public class SwingIssueApp extends JFrame {
     private Long selectedIssueId;
     private Runnable selectedWorkflowAction;
 
-    public SwingIssueApp(IssueController controller, UserController userController) {
+    public SwingIssueApp(IssueController controller, ProjectController projectController, UserController userController) {
         super("Issue Management System - Swing");
         this.controller = controller;
+        this.projectController = projectController;
         this.userController = userController;
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1050, 720));
@@ -224,7 +227,7 @@ public class SwingIssueApp extends JFrame {
             if (selectedProject == null) {
                 throw new IllegalStateException("Project is required.");
             }
-            controller.createIssue(selectedProject.getName(), title, description, currentUser.getUsername(), (Priority) priorityBox.getSelectedItem());
+            controller.createIssue(selectedProject.getId(), title, description, currentUser.getUsername(), (Priority) priorityBox.getSelectedItem());
             titleField.setText("");
             descriptionField.setText("");
             refreshIssues(controller.issues());
@@ -601,7 +604,7 @@ public class SwingIssueApp extends JFrame {
         if (projectName == null || projectName.isBlank()) {
             return;
         }
-        controller.addProject(projectName);
+        projectController.createProject(projectName);
         refreshProjectChoices();
         showStatus("Project added.");
     }
@@ -609,7 +612,7 @@ public class SwingIssueApp extends JFrame {
     private void refreshProjectChoices() {
         Project selected = (Project) projectBox.getSelectedItem();
         projectBox.removeAllItems();
-        for (Project project : controller.projects()) {
+        for (Project project : projectController.findAllProjects()) {
             projectBox.addItem(project);
             if (selected != null && selected.getName().equalsIgnoreCase(project.getName())) {
                 projectBox.setSelectedItem(project);
@@ -624,7 +627,11 @@ public class SwingIssueApp extends JFrame {
         Priority priority = (Priority) JOptionPane.showInputDialog(this, "Priority", "New Issue",
                 JOptionPane.PLAIN_MESSAGE, null, Priority.values(), Priority.MAJOR);
         if (title != null && description != null && priority != null) {
-            controller.createIssue("project1", title, description, currentUser.getUsername(), priority);
+            Project selectedProject = (Project) projectBox.getSelectedItem();
+            if (selectedProject == null) {
+                throw new IllegalStateException("Project is required.");
+            }
+            controller.createIssue(selectedProject.getId(), title, description, currentUser.getUsername(), priority);
             refreshIssues(controller.issues());
         }
     }
@@ -943,7 +950,7 @@ public class SwingIssueApp extends JFrame {
     }
 
     private String projectNameOf(Issue issue) {
-        return controller.projects().stream()
+        return projectController.findAllProjects().stream()
                 .filter(project -> project.getId() == issue.getProjectId())
                 .map(Project::getName)
                 .findFirst()
@@ -996,7 +1003,10 @@ public class SwingIssueApp extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             AppFactory.Controllers controllers = AppFactory.createControllers();
-            SwingIssueApp app = new SwingIssueApp(controllers.issueController(), controllers.userController());
+            SwingIssueApp app = new SwingIssueApp(
+                    controllers.issueController(),
+                    controllers.projectController(),
+                    controllers.userController());
             if (app.loginBeforeShow()) {
                 app.setVisible(true);
             } else {
