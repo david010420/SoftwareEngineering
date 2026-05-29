@@ -132,18 +132,18 @@ public class AwtIssueApp extends Frame {
         Button reset = new Button("Reset");
         reset.addActionListener(e -> resetSearch());
         top.add(reset);
-        queryPanel.add(new Label("Ticket Query"), BorderLayout.NORTH);
+        queryPanel.add(new Label("Issue Query"), BorderLayout.NORTH);
         queryPanel.add(top, BorderLayout.CENTER);
 
         issueList.addItemListener(e -> showSelected());
         details.setEditable(false);
 
         Panel ticketListPanel = new Panel(new BorderLayout(6, 6));
-        ticketListPanel.add(new Label("Tickets"), BorderLayout.NORTH);
+        ticketListPanel.add(new Label("Issues"), BorderLayout.NORTH);
         ticketListPanel.add(issueList, BorderLayout.CENTER);
 
         Panel detailPanel = new Panel(new BorderLayout(6, 6));
-        detailPanel.add(new Label("Ticket Detail"), BorderLayout.NORTH);
+        detailPanel.add(new Label("Issue Detail"), BorderLayout.NORTH);
         detailPanel.add(details, BorderLayout.CENTER);
 
         Panel center = new Panel(new GridLayout(1, 2, 8, 8));
