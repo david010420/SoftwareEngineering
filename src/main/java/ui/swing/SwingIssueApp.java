@@ -62,6 +62,7 @@ public class SwingIssueApp extends JFrame {
     private final JTextField reporterField = new JTextField();
     private final JTextField assigneeField = new JTextField();
     private final JComboBox<String> statusBox = new JComboBox<>();
+    private final JComboBox<String> priorityFilterBox = new JComboBox<>();
     private final JComboBox<Project> projectBox = new JComboBox<>();
     private final JLabel currentUserLabel = new JLabel("Not logged in");
     private final JLabel selectedTicketLabel = new JLabel("Selected ticket: none");
@@ -122,11 +123,15 @@ public class SwingIssueApp extends JFrame {
     }
 
     private JPanel buildBrowseTab() {
-        JPanel filters = new JPanel(new GridLayout(6, 2, 6, 6));
+        JPanel filters = new JPanel(new GridLayout(7, 2, 6, 6));
         filters.setBorder(BorderFactory.createTitledBorder("Ticket Query"));
         statusBox.addItem("ALL");
         for (IssueStatus status : IssueStatus.values()) {
             statusBox.addItem(status.name());
+        }
+        priorityFilterBox.addItem("ALL");
+        for (Priority priority : Priority.values()) {
+            priorityFilterBox.addItem(priority.name());
         }
         filters.add(new JLabel("Project"));
         filters.add(projectFilterField);
@@ -138,6 +143,8 @@ public class SwingIssueApp extends JFrame {
         filters.add(assigneeField);
         filters.add(new JLabel("Status"));
         filters.add(statusBox);
+        filters.add(new JLabel("Priority"));
+        filters.add(priorityFilterBox);
         filters.add(new JLabel(""));
         JPanel searchActions = new JPanel(new GridLayout(1, 2, 6, 0));
         JButton searchButton = new JButton("Search");
@@ -337,7 +344,9 @@ public class SwingIssueApp extends JFrame {
         JPanel adminActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         adminActions.setBorder(BorderFactory.createTitledBorder("Admin"));
         addRoleButton(adminActions, "Add User", this::addUser, Role.ADMIN);
+        addRoleButton(adminActions, "Delete User", this::deleteUser, Role.ADMIN);
         addRoleButton(adminActions, "Add Project", this::addProject, Role.ADMIN);
+        addRoleButton(adminActions, "Delete Project", this::deleteProject, Role.ADMIN);
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -543,7 +552,14 @@ public class SwingIssueApp extends JFrame {
     private void search() {
         String selectedStatus = statusBox.getSelectedItem() == null ? "ALL" : statusBox.getSelectedItem().toString();
         IssueStatus status = "ALL".equals(selectedStatus) ? null : IssueStatus.valueOf(selectedStatus);
+        String selectedPriority = priorityFilterBox.getSelectedItem() == null ? "ALL" : priorityFilterBox.getSelectedItem().toString();
+        Priority priority = "ALL".equals(selectedPriority) ? null : Priority.valueOf(selectedPriority);
         List<Issue> results = controller.search(queryField.getText(), reporterField.getText(), assigneeField.getText(), status);
+        if (priority != null) {
+            results = results.stream()
+                    .filter(issue -> issue.getPriority() == priority)
+                    .toList();
+        }
         String projectFilter = projectFilterField.getText();
         if (projectFilter != null && !projectFilter.isBlank()) {
             String normalizedProject = projectFilter.trim();
@@ -561,6 +577,7 @@ public class SwingIssueApp extends JFrame {
         reporterField.setText(reporter == null ? "" : reporter);
         assigneeField.setText(assignee == null ? "" : assignee);
         statusBox.setSelectedItem(status == null ? "ALL" : status.name());
+        priorityFilterBox.setSelectedItem("ALL");
         search();
     }
 
@@ -570,6 +587,7 @@ public class SwingIssueApp extends JFrame {
         reporterField.setText("");
         assigneeField.setText("");
         statusBox.setSelectedItem("ALL");
+        priorityFilterBox.setSelectedItem("ALL");
         refreshIssues(controller.issues().stream()
                 .filter(issue -> issue.getStatus() != IssueStatus.CLOSED && issue.getStatus() != IssueStatus.RESOLVED)
                 .toList());
@@ -581,6 +599,7 @@ public class SwingIssueApp extends JFrame {
         reporterField.setText("");
         assigneeField.setText("");
         statusBox.setSelectedItem("ALL");
+        priorityFilterBox.setSelectedItem("ALL");
         refreshIssues(controller.issues());
     }
 
@@ -598,6 +617,29 @@ public class SwingIssueApp extends JFrame {
         }
     }
 
+    private void deleteUser() {
+        requireRole(Role.ADMIN, "Only admin can delete users.");
+        List<UserAccount> users = userController.findAll();
+        if (users.isEmpty()) {
+            throw new IllegalStateException("No user exists.");
+        }
+        UserAccount user = (UserAccount) JOptionPane.showInputDialog(this, "User", "Delete User",
+                JOptionPane.WARNING_MESSAGE, null, users.toArray(), users.get(0));
+        if (user == null) {
+            return;
+        }
+        int option = JOptionPane.showConfirmDialog(this,
+                "Delete user '" + user.getUsername() + "'?",
+                "Confirm Delete User",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (option != JOptionPane.YES_OPTION) {
+            return;
+        }
+        userController.delete(currentUser.getUsername(), user.getUsername());
+        showStatus("User deleted: " + user.getUsername());
+    }
+
     private void addProject() {
         requireRole(Role.ADMIN, "Only admin can add projects.");
         String projectName = input("Project name");
@@ -607,6 +649,31 @@ public class SwingIssueApp extends JFrame {
         projectController.createProject(projectName);
         refreshProjectChoices();
         showStatus("Project added.");
+    }
+
+    private void deleteProject() {
+        requireRole(Role.ADMIN, "Only admin can delete projects.");
+        List<Project> projects = projectController.findAllProjects();
+        if (projects.isEmpty()) {
+            throw new IllegalStateException("No project exists.");
+        }
+        Project project = (Project) JOptionPane.showInputDialog(this, "Project", "Delete Project",
+                JOptionPane.WARNING_MESSAGE, null, projects.toArray(), projects.get(0));
+        if (project == null) {
+            return;
+        }
+        int option = JOptionPane.showConfirmDialog(this,
+                "Delete project '" + project.getName() + "' and all issues in it?",
+                "Confirm Delete Project",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (option != JOptionPane.YES_OPTION) {
+            return;
+        }
+        projectController.deleteProject(project.getId());
+        refreshProjectChoices();
+        refreshIssues(controller.issues());
+        showStatus("Project deleted: " + project.getName());
     }
 
     private void refreshProjectChoices() {
