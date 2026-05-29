@@ -68,11 +68,12 @@ public class SwingIssueApp extends JFrame {
     private final JLabel selectedTicketLabel = new JLabel("Selected ticket: none");
     private final JLabel workflowModeLabel = new JLabel("Choose an action.");
     private final JLabel workflowAssigneeLabel = new JLabel("Assignee");
-    private final JTextField workflowAssigneeField = new JTextField();
+    private final JComboBox<String> workflowAssigneeBox = new JComboBox<>();
     private final JLabel workflowCommentLabel = new JLabel("Comment");
     private final JTextArea workflowCommentArea = new JTextArea(8, 40);
     private final JButton workflowApplyButton = new JButton("Apply");
     private final JTextArea recommendationArea = new JTextArea();
+    private final JTextArea developerArea = new JTextArea();
     private final JTextArea statsArea = new JTextArea();
     private final JLabel statusMessageLabel = new JLabel("Ready.");
     private final List<RoleAction> roleActions = new ArrayList<>();
@@ -112,6 +113,7 @@ public class SwingIssueApp extends JFrame {
         workflowTab = buildWorkflowTab();
         reportsTab = buildReportsTab();
         adminTab = buildAdminTab();
+        refreshDeveloperChoices();
 
         JPanel root = new JPanel(new BorderLayout(8, 8));
         root.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -292,7 +294,7 @@ public class SwingIssueApp extends JFrame {
 
         JPanel assigneeRow = new JPanel(new BorderLayout(8, 0));
         assigneeRow.add(workflowAssigneeLabel, BorderLayout.WEST);
-        assigneeRow.add(workflowAssigneeField, BorderLayout.CENTER);
+        assigneeRow.add(workflowAssigneeBox, BorderLayout.CENTER);
 
         JPanel commentPanel = new JPanel(new BorderLayout(8, 8));
         commentPanel.add(workflowCommentLabel, BorderLayout.NORTH);
@@ -315,22 +317,32 @@ public class SwingIssueApp extends JFrame {
         JPanel reportActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         reportActions.setBorder(BorderFactory.createTitledBorder("Reports"));
         addRoleButton(reportActions, "Recommend Assignee", this::recommend, Role.PL);
+        addRoleButton(reportActions, "Refresh Developers", this::refreshDeveloperChoices, Role.PL);
         addRoleButton(reportActions, "Stats", this::stats, Role.ADMIN, Role.PL);
 
         configureReadOnly(recommendationArea);
+        configureReadOnly(developerArea);
         configureReadOnly(statsArea);
         recommendationArea.setText("Select a ticket and click Recommend Assignee.");
+        developerArea.setText("Developer accounts will appear here.");
         statsArea.setText("Click Stats to view issue counts.");
 
         JPanel recommendationPanel = new JPanel(new BorderLayout());
         recommendationPanel.setBorder(BorderFactory.createTitledBorder("Recommendation Result"));
         recommendationPanel.add(new JScrollPane(recommendationArea), BorderLayout.CENTER);
 
+        JPanel developerPanel = new JPanel(new BorderLayout());
+        developerPanel.setBorder(BorderFactory.createTitledBorder("Available Developers"));
+        developerPanel.add(new JScrollPane(developerArea), BorderLayout.CENTER);
+
         JPanel statsPanel = new JPanel(new BorderLayout());
         statsPanel.setBorder(BorderFactory.createTitledBorder("Statistics Result"));
         statsPanel.add(new JScrollPane(statsArea), BorderLayout.CENTER);
 
-        JSplitPane resultSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, recommendationPanel, statsPanel);
+        JSplitPane recommendationSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, recommendationPanel, developerPanel);
+        recommendationSplit.setResizeWeight(0.55);
+
+        JSplitPane resultSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, recommendationSplit, statsPanel);
         resultSplit.setResizeWeight(0.5);
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
@@ -613,6 +625,7 @@ public class SwingIssueApp extends JFrame {
                 JOptionPane.PLAIN_MESSAGE, null, Role.values(), Role.DEV);
         if (role != null) {
             userController.register(currentUser.getUsername(), username, "1234", role);
+            refreshDeveloperChoices();
             showStatus("User added. Default password is 1234.");
         }
     }
@@ -637,6 +650,7 @@ public class SwingIssueApp extends JFrame {
             return;
         }
         userController.delete(currentUser.getUsername(), user.getUsername());
+        refreshDeveloperChoices();
         showStatus("User deleted: " + user.getUsername());
     }
 
@@ -765,6 +779,7 @@ public class SwingIssueApp extends JFrame {
     private void recommend() {
         Issue issue = selectedIssue();
         if (issue != null) {
+            refreshDeveloperChoices();
             List<String> candidates = controller.recommendAssignees(issue.getId());
             StringBuilder builder = new StringBuilder();
             builder.append("Selected issue: #").append(issue.getId()).append(" ").append(issue.getTitle()).append('\n');
@@ -934,7 +949,8 @@ public class SwingIssueApp extends JFrame {
     }
 
     private String workflowAssignee() {
-        return workflowAssigneeField.getText().trim();
+        Object selected = workflowAssigneeBox.getSelectedItem();
+        return selected == null ? "" : selected.toString().trim();
     }
 
     private String workflowComment() {
@@ -942,7 +958,6 @@ public class SwingIssueApp extends JFrame {
     }
 
     private void clearWorkflowInputs() {
-        workflowAssigneeField.setText("");
         workflowCommentArea.setText("");
     }
 
@@ -964,7 +979,9 @@ public class SwingIssueApp extends JFrame {
         workflowApplyButton.setEnabled(true);
         showWorkflowAssigneeInput(needsAssignee);
         if (!needsAssignee) {
-            workflowAssigneeField.setText("");
+            workflowAssigneeBox.setSelectedIndex(workflowAssigneeBox.getItemCount() == 0 ? -1 : 0);
+        } else {
+            refreshDeveloperChoices();
         }
     }
 
@@ -980,7 +997,42 @@ public class SwingIssueApp extends JFrame {
 
     private void showWorkflowAssigneeInput(boolean visible) {
         workflowAssigneeLabel.setVisible(visible);
-        workflowAssigneeField.setVisible(visible);
+        workflowAssigneeBox.setVisible(visible);
+    }
+
+    private void refreshDeveloperChoices() {
+        Object selected = workflowAssigneeBox.getSelectedItem();
+        workflowAssigneeBox.removeAllItems();
+        List<UserAccount> developers = userController.findByRole(Role.DEV);
+        for (UserAccount developer : developers) {
+            workflowAssigneeBox.addItem(developer.getUsername());
+        }
+        if (selected != null) {
+            workflowAssigneeBox.setSelectedItem(selected);
+        }
+        updateDeveloperArea(developers);
+    }
+
+    private void updateDeveloperArea(List<UserAccount> developers) {
+        if (developerArea == null) {
+            return;
+        }
+        StringBuilder builder = new StringBuilder();
+        if (developers.isEmpty()) {
+            builder.append("No developer account exists.");
+        } else {
+            builder.append("Developers\n");
+            builder.append(String.format("%-16s %s%n", "Username", "Assigned"));
+            builder.append("--------------------------\n");
+            for (UserAccount developer : developers) {
+                long assignedCount = controller.statistics()
+                        .getAssigneeCounts()
+                        .getOrDefault(developer.getUsername(), 0L);
+                builder.append(String.format("%-16s %d%n", developer.getUsername(), assignedCount));
+            }
+        }
+        developerArea.setText(builder.toString());
+        developerArea.setCaretPosition(0);
     }
 
     private void showStatus(String message) {

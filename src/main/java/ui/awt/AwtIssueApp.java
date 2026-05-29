@@ -50,7 +50,7 @@ public class AwtIssueApp extends Frame {
     private final TextField title = new TextField("AWT created issue");
     private final TextArea description = new TextArea("Created from AWT UI", 4, 60);
     private final Choice priority = new Choice();
-    private final TextField actionAssignee = new TextField("dev1");
+    private final Choice actionAssignee = new Choice();
     private final TextArea actionComment = new TextArea("Updated from AWT UI", 3, 40);
     private final TextField adminUsername = new TextField("newUser");
     private final Choice adminRole = new Choice();
@@ -77,6 +77,7 @@ public class AwtIssueApp extends Frame {
         setSize(1180, 760);
         buildUi();
         refreshProjectChoices();
+        refreshDeveloperChoices();
         refresh(controller.issues());
         updateActionVisibility();
     }
@@ -200,6 +201,7 @@ public class AwtIssueApp extends Frame {
 
         Panel reportsButtons = new Panel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         addRoleButton(reportsButtons, "Recommend", this::recommend, new IssueStatus[0], Role.PL);
+        addRoleButton(reportsButtons, "Refresh Developers", this::refreshDeveloperChoices, null, Role.PL);
         addRoleButton(reportsButtons, "Stats", this::stats, null, Role.ADMIN, Role.PL);
         reportOutput.setEditable(false);
         Panel reports = new Panel(new BorderLayout(6, 6));
@@ -308,7 +310,7 @@ public class AwtIssueApp extends Frame {
         Issue issue = selected();
         if (issue != null) {
             requireRole(Role.PL, "Only PL can assign issues.");
-            controller.assignIssue(issue.getId(), actionAssignee.getText(), currentUser.getUsername(), actionComment.getText());
+            controller.assignIssue(issue.getId(), selectedDeveloper(), currentUser.getUsername(), actionComment.getText());
             refresh(controller.issues());
             showMessage("Issue assigned.");
         }
@@ -341,9 +343,11 @@ public class AwtIssueApp extends Frame {
         Issue issue = selected();
         if (issue != null) {
             requireRole(Role.PL, "Only PL can recommend assignees.");
+            refreshDeveloperChoices();
             String candidates = String.join(", ", controller.recommendAssignees(issue.getId()));
             reportOutput.setText("Selected issue: #" + issue.getId() + " " + issue.getTitle() + "\n"
-                    + "Best candidate: " + (candidates.isBlank() ? "No candidate yet." : candidates));
+                    + "Best candidate: " + (candidates.isBlank() ? "No candidate yet." : candidates) + "\n\n"
+                    + developerSummary());
         }
     }
 
@@ -419,6 +423,7 @@ public class AwtIssueApp extends Frame {
     private void addUser() {
         requireRole(Role.ADMIN, "Only admin can add users.");
         userController.register(currentUser.getUsername(), adminUsername.getText(), "1234", Role.valueOf(adminRole.getSelectedItem()));
+        refreshDeveloperChoices();
         showMessage("User added. Default password is 1234.");
     }
 
@@ -447,6 +452,44 @@ public class AwtIssueApp extends Frame {
             throw new IllegalStateException("Project is required.");
         }
         return projects.get(index);
+    }
+
+    private void refreshDeveloperChoices() {
+        String selected = actionAssignee.getSelectedItem();
+        actionAssignee.removeAll();
+        for (UserAccount developer : userController.findByRole(Role.DEV)) {
+            actionAssignee.add(developer.getUsername());
+            if (selected != null && selected.equalsIgnoreCase(developer.getUsername())) {
+                actionAssignee.select(developer.getUsername());
+            }
+        }
+        reportOutput.setText(developerSummary());
+    }
+
+    private String selectedDeveloper() {
+        String selected = actionAssignee.getSelectedItem();
+        if (selected == null || selected.isBlank()) {
+            throw new IllegalStateException("No developer account exists.");
+        }
+        return selected;
+    }
+
+    private String developerSummary() {
+        StringBuilder builder = new StringBuilder("Available Developers\n");
+        java.util.List<UserAccount> developers = userController.findByRole(Role.DEV);
+        if (developers.isEmpty()) {
+            builder.append("No developer account exists.");
+            return builder.toString();
+        }
+        Map<String, Long> assigneeCounts = controller.statistics().getAssigneeCounts();
+        for (UserAccount developer : developers) {
+            builder.append("- ")
+                    .append(developer.getUsername())
+                    .append(" (assigned: ")
+                    .append(assigneeCounts.getOrDefault(developer.getUsername(), 0L))
+                    .append(")\n");
+        }
+        return builder.toString();
     }
 
     private void updateActionVisibility() {
