@@ -2,9 +2,12 @@ package service;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import model.Issue;
 import model.IssueComment;
@@ -144,6 +147,34 @@ public class IssueService {
 
     public Map<YearMonth, Long> countReportedByMonth() {
         return repository.countReportedByMonth();
+    }
+
+    public Map<IssueStatus, Long> countByStatus() {
+        return repository.findAll().stream()
+                .collect(Collectors.groupingBy(Issue::getStatus, LinkedHashMap::new, Collectors.counting()));
+    }
+
+    public Map<Priority, Long> countByPriority() {
+        return repository.findAll().stream()
+                .collect(Collectors.groupingBy(Issue::getPriority, LinkedHashMap::new, Collectors.counting()));
+    }
+
+    public Map<String, Long> countByAssigneeUsername() {
+        return repository.findAll().stream()
+                .map(Issue::getAssigneeUsername)
+                .filter(assignee -> assignee != null && !assignee.isBlank())
+                .map(String::trim)
+                .collect(Collectors.groupingBy(
+                        String::toLowerCase,
+                        Collectors.counting()))
+                .entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByKey(Comparator.naturalOrder()))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (a, b) -> a,
+                        LinkedHashMap::new));
     }
 
     private void addCommentIfPresent(long issueId, String authorUsername, String commentBody) {

@@ -132,7 +132,12 @@ public class IssueController {
     }
 
     public IssueStatistics statistics() {
-        return new IssueStatistics(countReportedByDay(), countReportedByMonth());
+        return new IssueStatistics(
+                countReportedByDay(),
+                countReportedByMonth(),
+                service.countByStatus(),
+                service.countByPriority(),
+                service.countByAssigneeUsername());
     }
 
     public List<String> recommendAssignees(long issueId) {
