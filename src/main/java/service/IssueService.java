@@ -15,25 +15,12 @@ import model.IssueNotFoundException;
 import model.IssueStatus;
 import model.Priority;
 import repository.IssueRepository;
-import repository.ProjectRepository;
 
 public class IssueService {
     private final IssueRepository repository;
-    private final ProjectRepository projectRepository;
 
     public IssueService(IssueRepository repository) {
-        this(repository, null);
-    }
-
-    public IssueService(IssueRepository repository, ProjectRepository projectRepository) {
         this.repository = Objects.requireNonNull(repository, "repository");
-        this.projectRepository = projectRepository;
-    }
-
-    public Issue reportIssue(long projectId, String title, String description, String reporterUsername, Priority priority) {
-        Issue issue = Issue.report(projectId, title, description, reporterUsername, priority);
-        requireExistingProject(issue.getProjectId());
-        return repository.save(issue);
     }
 
     public Issue getIssue(long issueId) {
@@ -71,7 +58,10 @@ public class IssueService {
     }
 
     public IssueComment addComment(long issueId, String authorUsername, String body) {
-        return repository.addComment(issueId, IssueComment.create(issueId, authorUsername, body));
+        Issue issue = getIssue(issueId);
+        IssueComment comment = IssueComment.create(issueId, authorUsername, body);
+        issue.addComment(comment);
+        return repository.addComment(issueId, comment);
     }
 
     public Issue assignIssue(long issueId, String assigneeUsername, String actorUsername, String commentBody) {
@@ -180,12 +170,6 @@ public class IssueService {
     private void addCommentIfPresent(long issueId, String authorUsername, String commentBody) {
         if (commentBody != null && !commentBody.trim().isEmpty()) {
             addComment(issueId, authorUsername, commentBody);
-        }
-    }
-
-    private void requireExistingProject(long projectId) {
-        if (projectRepository != null && !projectRepository.exists(projectId)) {
-            throw new IllegalArgumentException("Unknown project: " + projectId);
         }
     }
 

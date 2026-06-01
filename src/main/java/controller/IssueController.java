@@ -14,23 +14,26 @@ import model.IssueStatus;
 import model.Priority;
 import service.IssueService;
 import service.IssueStatistics;
+import service.ProjectService;
 import service.RecommendService;
 
 public class IssueController {
     private final IssueService service;
+    private final ProjectService projectService;
     private final RecommendService recommendService;
 
-    public IssueController(IssueService service) {
-        this(service, null);
+    public IssueController(IssueService service, ProjectService projectService) {
+        this(service, projectService, null);
     }
 
-    public IssueController(IssueService service, RecommendService recommendService) {
+    public IssueController(IssueService service, ProjectService projectService, RecommendService recommendService) {
         this.service = Objects.requireNonNull(service, "service");
+        this.projectService = Objects.requireNonNull(projectService, "projectService");
         this.recommendService = recommendService;
     }
 
     public Issue reportIssue(long projectId, String title, String description, String reporterUsername, Priority priority) {
-        return service.reportIssue(projectId, title, description, reporterUsername, priority);
+        return projectService.addIssue(projectId, title, description, reporterUsername, priority);
     }
 
     public Issue createIssue(long projectId, String title, String description, String reporterUsername, Priority priority) {

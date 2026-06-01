@@ -49,7 +49,8 @@ public class SqliteIssueRepository implements IssueRepository {
                         + "fixer_username TEXT,"
                         + "assignee_username TEXT,"
                         + "priority TEXT NOT NULL,"
-                        + "status TEXT NOT NULL"
+                        + "status TEXT NOT NULL,"
+                        + "FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE"
                         + ")");
                 statement.executeUpdate("CREATE TABLE IF NOT EXISTS issue_comments ("
                         + "id INTEGER PRIMARY KEY AUTOINCREMENT,"

@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import model.Issue;
+import model.Priority;
 import model.Project;
 import repository.IssueRepository;
 import repository.ProjectRepository;
@@ -52,14 +54,28 @@ public class ProjectService {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown project: " + name));
     }
 
+    public Issue addIssue(long projectId, String title, String description, String reporterUsername, Priority priority) {
+        requireIssueRepository();
+        Project project = repository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown project: " + projectId));
+        Issue issue = Issue.report(projectId, title, description, reporterUsername, priority);
+        project.addIssue(issue);
+        return issueRepository.save(issue);
+    }
+
     public void deleteProject(long projectId) {
         if (!repository.exists(projectId)) {
             throw new IllegalArgumentException("Unknown project: " + projectId);
         }
-        if (issueRepository != null) {
-            issueRepository.deleteByProjectId(projectId);
-        }
+        requireIssueRepository();
+        issueRepository.deleteByProjectId(projectId);
         repository.delete(projectId);
+    }
+
+    private void requireIssueRepository() {
+        if (issueRepository == null) {
+            throw new IllegalStateException("IssueRepository is required for project issue operations.");
+        }
     }
 
     private Project loadIssues(Project project) {
