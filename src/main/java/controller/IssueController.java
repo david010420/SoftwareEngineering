@@ -2,7 +2,6 @@ package controller;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -22,14 +21,10 @@ public class IssueController {
     private final ProjectService projectService;
     private final RecommendService recommendService;
 
-    public IssueController(IssueService service, ProjectService projectService) {
-        this(service, projectService, null);
-    }
-
     public IssueController(IssueService service, ProjectService projectService, RecommendService recommendService) {
         this.service = Objects.requireNonNull(service, "service");
         this.projectService = Objects.requireNonNull(projectService, "projectService");
-        this.recommendService = recommendService;
+        this.recommendService = Objects.requireNonNull(recommendService, "recommendService");
     }
 
     public Issue reportIssue(long projectId, String title, String description, String reporterUsername, Priority priority) {
@@ -115,15 +110,25 @@ public class IssueController {
     }
 
     public Issue resolveIssue(long issueId, String testerUsername, String commentBody) {
-        return service.resolveIssue(issueId, testerUsername, commentBody);
+        Issue issue = service.resolveIssue(issueId, testerUsername, commentBody);
+        recommendService.cal(issue.getProjectId());
+        return issue;
     }
 
     public Issue closeIssue(long issueId, String actorUsername, String commentBody) {
-        return service.closeIssue(issueId, actorUsername, commentBody);
+        Issue issue = service.closeIssue(issueId, actorUsername, commentBody);
+        recommendService.cal(issue.getProjectId());
+        return issue;
     }
 
     public Issue reopenIssue(long issueId, String actorUsername, String commentBody) {
-        return service.reopenIssue(issueId, actorUsername, commentBody);
+        Issue issue = service.reopenIssue(issueId, actorUsername, commentBody);
+        recommendService.cal(issue.getProjectId());
+        return issue;
+    }
+
+    public void learnNow(long projectId) {
+        recommendService.cal(projectId);
     }
 
     public Map<LocalDate, Long> countReportedByDay() {
@@ -144,9 +149,6 @@ public class IssueController {
     }
 
     public List<String> recommendAssignees(long issueId) {
-        if (recommendService == null) {
-            return Collections.emptyList();
-        }
         return recommendService.recommendUser(issueId, 3);
     }
 
