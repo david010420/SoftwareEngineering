@@ -27,12 +27,8 @@ public class IssueController {
         this.recommendService = Objects.requireNonNull(recommendService, "recommendService");
     }
 
-    public Issue reportIssue(long projectId, String title, String description, String reporterUsername, Priority priority) {
-        return projectService.addIssue(projectId, title, description, reporterUsername, priority);
-    }
-
     public Issue createIssue(long projectId, String title, String description, String reporterUsername, Priority priority) {
-        return reportIssue(projectId, title, description, reporterUsername, priority);
+        return projectService.addIssue(projectId, title, description, reporterUsername, priority);
     }
 
     public Issue getIssue(long issueId) {
@@ -45,30 +41,6 @@ public class IssueController {
 
     public List<Issue> findAllIssues() {
         return service.findAllIssues();
-    }
-
-    public List<Issue> findIssuesByProjectId(long projectId) {
-        return service.findIssuesByProjectId(projectId);
-    }
-
-    public List<Issue> findIssuesByReporterUsername(String reporterUsername) {
-        return service.findIssuesByReporterUsername(reporterUsername);
-    }
-
-    public List<Issue> findIssuesByAssigneeUsername(String assigneeUsername) {
-        return service.findIssuesByAssigneeUsername(assigneeUsername);
-    }
-
-    public List<Issue> findIssuesByStatus(IssueStatus status) {
-        return service.findIssuesByStatus(status);
-    }
-
-    public List<Issue> findIssuesByPriority(Priority priority) {
-        return service.findIssuesByPriority(priority);
-    }
-
-    public List<Issue> searchIssuesByKeyword(String keyword) {
-        return service.searchIssuesByKeyword(keyword);
     }
 
     public List<Issue> search(String query, String reporterUsername, String assigneeUsername, IssueStatus status) {

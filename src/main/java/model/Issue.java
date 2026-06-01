@@ -68,26 +68,11 @@ public class Issue implements Serializable {
         return reporterUsername;
     }
 
-    // UI/통계 코드 호환용 alias
-    public String getReporter() {
-        return reporterUsername;
-    }
-
     public LocalDateTime getReportedAt() {
         return reportedAt;
     }
 
-    // UI/통계 코드 호환용 alias
-    public LocalDateTime getReportedDate() {
-        return reportedAt;
-    }
-
     public String getFixerUsername() {
-        return fixerUsername;
-    }
-
-    // UI 코드 호환용 alias
-    public String getFixer() {
         return fixerUsername;
     }
 
@@ -96,11 +81,6 @@ public class Issue implements Serializable {
     }
 
     public String getAssigneeUsername() {
-        return assigneeUsername;
-    }
-
-    // UI 코드 호환용 alias
-    public String getAssignee() {
         return assigneeUsername;
     }
 

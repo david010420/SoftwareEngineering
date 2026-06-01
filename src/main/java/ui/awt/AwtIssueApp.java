@@ -310,7 +310,12 @@ public class AwtIssueApp extends Frame {
         Issue issue = selected();
         if (issue != null) {
             requireRole(Role.PL, "Only PL can assign issues.");
-            controller.assignIssue(issue.getId(), selectedDeveloper(), currentUser.getUsername(), actionComment.getText());
+            String comment = actionComment.getText() == null ? "" : actionComment.getText().trim();
+            if (comment.isEmpty()) {
+                showMessage("Assignment comment is required.");
+                return;
+            }
+            controller.assignIssue(issue.getId(), selectedDeveloper(), currentUser.getUsername(), comment);
             refresh(controller.issues());
             showMessage("Issue assigned.");
         }
@@ -388,12 +393,12 @@ public class AwtIssueApp extends Frame {
                 + "Project: " + issue.getProjectId() + "\n"
                 + "Title: " + issue.getTitle() + "\n"
                 + "Description: " + issue.getDescription() + "\n"
-                + "Reporter: " + issue.getReporter() + "\n"
+                + "Reporter: " + issue.getReporterUsername() + "\n"
                 + "Priority: " + issue.getPriority() + "\n"
                 + "Status: " + issue.getStatus() + "\n"
-                + "Assignee: " + issue.getAssignee() + "\n"
-                + "Fixer: " + issue.getFixer() + "\n"
-                + "Reported: " + issue.getReportedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) + "\n"
+                + "Assignee: " + issue.getAssigneeUsername() + "\n"
+                + "Fixer: " + issue.getFixerUsername() + "\n"
+                + "Reported: " + issue.getReportedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) + "\n"
                 + "Comments: " + issue.getComments().size() + "\n"
                 + commentHistory(issue));
         updateActionVisibility();

@@ -14,10 +14,6 @@ public class ProjectService {
     private final ProjectRepository repository;
     private final IssueRepository issueRepository;
 
-    public ProjectService(ProjectRepository repository) {
-        this(repository, null);
-    }
-
     public ProjectService(ProjectRepository repository, IssueRepository issueRepository) {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.issueRepository = issueRepository;

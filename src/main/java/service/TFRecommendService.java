@@ -92,7 +92,7 @@ public class TFRecommendService implements RecommendService {
     public void cal(Long projectId) {
         List<Issue> issueList = issueRepository.findByProjectId(projectId).stream()
                 .filter(i -> i.getStatus() == IssueStatus.RESOLVED || i.getStatus() == IssueStatus.CLOSED)
-                .filter(i -> i.getFixer() != null).toList();
+                .filter(i -> i.getFixerUsername() != null).toList();
 
         //만약 계산할 이슈가 존재하지 않는다면 바로 끝낸다
         if (issueList.isEmpty()) {
@@ -113,7 +113,7 @@ public class TFRecommendService implements RecommendService {
         List<IndexEntry> entries = new ArrayList<>();
         for (int i = 0; i < issueList.size(); i++) {
             Map<String, Double> tfidf = computeTfIdf(tokenized.get(i), idf);
-            entries.add(new IndexEntry(issueList.get(i).getFixer(), tfidf));
+            entries.add(new IndexEntry(issueList.get(i).getFixerUsername(), tfidf));
         }
         index.put(projectId, entries);
     }

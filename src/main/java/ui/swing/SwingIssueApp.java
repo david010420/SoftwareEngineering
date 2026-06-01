@@ -716,8 +716,8 @@ public class SwingIssueApp extends JFrame {
         refreshIssues(controller.issues().stream()
                 .filter(issue -> containsIgnoreCase(issue.getTitle(), term)
                         || containsIgnoreCase(issue.getDescription(), term)
-                        || containsIgnoreCase(issue.getReporter(), term)
-                        || containsIgnoreCase(issue.getAssignee(), term)
+                        || containsIgnoreCase(issue.getReporterUsername(), term)
+                        || containsIgnoreCase(issue.getAssigneeUsername(), term)
                         || containsIgnoreCase(projectNameOf(issue), term)
                         || String.valueOf(issue.getId()).equals(term))
                 .toList());
@@ -907,7 +907,11 @@ public class SwingIssueApp extends JFrame {
         if (assignee.isBlank()) {
             throw new IllegalStateException("Assignee is required.");
         }
-        controller.assignIssue(issue.getId(), assignee, currentUser.getUsername(), workflowComment());
+        String comment = workflowComment();
+        if (comment.isBlank()) {
+            throw new IllegalStateException("Assignment comment is required.");
+        }
+        controller.assignIssue(issue.getId(), assignee, currentUser.getUsername(), comment);
         clearWorkflowInputs();
         refreshIssues(controller.issues());
         showStatus("Issue #" + issue.getId() + " assigned to " + assignee + ".");
@@ -993,7 +997,7 @@ public class SwingIssueApp extends JFrame {
                 .filter(issue -> issue.getStatus() != IssueStatus.RESOLVED && issue.getStatus() != IssueStatus.CLOSED)
                 .count();
         long unassigned = issues.stream()
-                .filter(issue -> issue.getAssignee() == null || issue.getAssignee().isBlank())
+                .filter(issue -> issue.getAssigneeUsername() == null || issue.getAssigneeUsername().isBlank())
                 .count();
 
         reportSummaryPanel.removeAll();
@@ -1103,7 +1107,7 @@ public class SwingIssueApp extends JFrame {
     private Map<YearMonth, Long> monthlyCreatedCounts(List<Issue> issues) {
         LinkedHashMap<YearMonth, Long> counts = emptyMonthWindow();
         for (Issue issue : issues) {
-            YearMonth month = YearMonth.from(issue.getReportedDate());
+            YearMonth month = YearMonth.from(issue.getReportedAt());
             if (counts.containsKey(month)) {
                 counts.put(month, counts.get(month) + 1);
             }
@@ -1136,8 +1140,8 @@ public class SwingIssueApp extends JFrame {
     private String recentActivityText(List<Issue> issues) {
         List<ActivityItem> activity = new ArrayList<>();
         for (Issue issue : issues) {
-            activity.add(new ActivityItem(issue.getReportedDate(),
-                    issue.getReporter() + " created Issue #" + issue.getId() + " " + issue.getTitle()));
+            activity.add(new ActivityItem(issue.getReportedAt(),
+                    issue.getReporterUsername() + " created Issue #" + issue.getId() + " " + issue.getTitle()));
             for (IssueComment comment : issue.getComments()) {
                 activity.add(new ActivityItem(comment.getCreatedAt(),
                         comment.getAuthorUsername() + " commented on Issue #" + issue.getId() + " " + issue.getTitle()));
@@ -1170,8 +1174,8 @@ public class SwingIssueApp extends JFrame {
                     issue.getStatus(),
                     issue.getPriority(),
                     issue.getTitle(),
-                    value(issue.getAssignee()),
-                    issue.getReporter(),
+                    value(issue.getAssigneeUsername()),
+                    issue.getReporterUsername(),
                     latestActivity(issue)
             });
         }
@@ -1271,7 +1275,7 @@ public class SwingIssueApp extends JFrame {
         project.setFont(project.getFont().deriveFont(Font.BOLD, 11f));
 
         JLabel footer = new JLabel("#" + issue.getId() + "   " + issue.getStatus()
-                + "   assignee: " + value(issue.getAssignee()));
+                + "   assignee: " + value(issue.getAssigneeUsername()));
         footer.setForeground(new Color(122, 137, 160));
         footer.setFont(footer.getFont().deriveFont(Font.BOLD, 11f));
 
@@ -1319,9 +1323,9 @@ public class SwingIssueApp extends JFrame {
         ticketTitleLabel.setText("#" + issue.getId() + " " + issue.getTitle());
         StringBuilder properties = new StringBuilder();
         properties.append(String.format("%-10s %-18s %-10s %s%n", "Project", projectNameOf(issue), "Status", issue.getStatus()));
-        properties.append(String.format("%-10s %-18s %-10s %s%n", "Priority", issue.getPriority(), "Reporter", issue.getReporter()));
-        properties.append(String.format("%-10s %-18s %-10s %s%n", "Assignee", value(issue.getAssignee()), "Fixer", value(issue.getFixer())));
-        properties.append(String.format("%-10s %-18s %-10s %s", "Reported", issue.getReportedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+        properties.append(String.format("%-10s %-18s %-10s %s%n", "Priority", issue.getPriority(), "Reporter", issue.getReporterUsername()));
+        properties.append(String.format("%-10s %-18s %-10s %s%n", "Assignee", value(issue.getAssigneeUsername()), "Fixer", value(issue.getFixerUsername())));
+        properties.append(String.format("%-10s %-18s %-10s %s", "Reported", issue.getReportedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
                 "Updated", latestActivity(issue)));
         ticketPropertiesArea.setText(properties.toString());
         ticketPropertiesArea.setCaretPosition(0);
@@ -1587,7 +1591,7 @@ public class SwingIssueApp extends JFrame {
 
     private static LocalDateTime latestActivityTime(Issue issue) {
         if (issue.getComments().isEmpty()) {
-            return issue.getReportedDate();
+            return issue.getReportedAt();
         }
         return issue.getComments().get(issue.getComments().size() - 1).getCreatedAt();
     }
