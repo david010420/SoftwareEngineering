@@ -14,13 +14,22 @@ import model.IssueComment;
 import model.IssueNotFoundException;
 import model.IssueStatus;
 import model.Priority;
+import model.Role;
+import model.UserAccount;
 import repository.IssueRepository;
+import repository.UserRepository;
 
 public class IssueService {
     private final IssueRepository repository;
+    private final UserRepository userRepository;
 
     public IssueService(IssueRepository repository) {
+        this(repository, null);
+    }
+
+    public IssueService(IssueRepository repository, UserRepository userRepository) {
         this.repository = Objects.requireNonNull(repository, "repository");
+        this.userRepository = userRepository;
     }
 
     public Issue getIssue(long issueId) {
@@ -33,30 +42,6 @@ public class IssueService {
         return repository.findAll();
     }
 
-    public List<Issue> findIssuesByProjectId(long projectId) {
-        return repository.findByProjectId(projectId);
-    }
-
-    public List<Issue> findIssuesByReporterUsername(String reporterUsername) {
-        return repository.findByReporterUsername(reporterUsername);
-    }
-
-    public List<Issue> findIssuesByAssigneeUsername(String assigneeUsername) {
-        return repository.findByAssigneeUsername(assigneeUsername);
-    }
-
-    public List<Issue> findIssuesByStatus(IssueStatus status) {
-        return repository.findByStatus(status);
-    }
-
-    public List<Issue> findIssuesByPriority(Priority priority) {
-        return repository.findByPriority(priority);
-    }
-
-    public List<Issue> searchIssuesByKeyword(String keyword) {
-        return repository.searchByKeyword(keyword);
-    }
-
     public IssueComment addComment(long issueId, String authorUsername, String body) {
         Issue issue = getIssue(issueId);
         IssueComment comment = IssueComment.create(issueId, authorUsername, body);
@@ -66,15 +51,19 @@ public class IssueService {
 
     public Issue assignIssue(long issueId, String assigneeUsername, String actorUsername, String commentBody) {
         String assignee = requireText(assigneeUsername, "assigneeUsername");
+        String comment = requireText(commentBody, "commentBody");
+        requireDeveloperAssignee(assignee);
+
         Issue issue = getIssue(issueId);
         if (issue.getStatus() != IssueStatus.NEW && issue.getStatus() != IssueStatus.REOPENED) {
             throw new IllegalStateException("Only NEW or REOPENED issues can be assigned.");
         }
 
+        // UC-03 <<include>> UC-04: assignment must always add an issue comment before completing assign.
+        addComment(issueId, actorUsername, comment);
         issue.setAssigneeUsername(assignee);
         issue.setStatus(IssueStatus.ASSIGNED);
         repository.update(issue);
-        addCommentIfPresent(issueId, actorUsername, commentBody);
         return getIssue(issueId);
     }
 
@@ -170,6 +159,17 @@ public class IssueService {
     private void addCommentIfPresent(long issueId, String authorUsername, String commentBody) {
         if (commentBody != null && !commentBody.trim().isEmpty()) {
             addComment(issueId, authorUsername, commentBody);
+        }
+    }
+
+    private void requireDeveloperAssignee(String assigneeUsername) {
+        if (userRepository == null) {
+            return;
+        }
+        UserAccount assignee = userRepository.findByUsername(assigneeUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown user: " + assigneeUsername));
+        if (assignee.getRole() != Role.DEV) {
+            throw new IllegalArgumentException("Assignee must be a developer account: " + assigneeUsername);
         }
     }
 

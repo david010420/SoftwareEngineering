@@ -17,14 +17,6 @@ public class IssueStatistics {
     private final Map<Priority, Long> priorityCounts;
     private final Map<String, Long> assigneeCounts;
 
-    public IssueStatistics(Map<LocalDate, Long> dailyCounts, Map<YearMonth, Long> monthlyCounts) {
-        this.dailyCounts = Objects.requireNonNull(dailyCounts, "dailyCounts");
-        this.monthlyCounts = Objects.requireNonNull(monthlyCounts, "monthlyCounts");
-        this.statusCounts = Collections.emptyMap();
-        this.priorityCounts = Collections.emptyMap();
-        this.assigneeCounts = Collections.emptyMap();
-    }
-
     public IssueStatistics(
             Map<LocalDate, Long> dailyCounts,
             Map<YearMonth, Long> monthlyCounts,

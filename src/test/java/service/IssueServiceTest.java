@@ -5,6 +5,8 @@ import model.IssueComment;
 import model.IssueNotFoundException;
 import model.IssueStatus;
 import model.Priority;
+import model.Role;
+import model.UserAccount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import repository.IssueRepository;
+import repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -26,6 +29,9 @@ class IssueServiceTest {
 
     @Mock
     IssueRepository issueRepository;
+
+    @Mock
+    UserRepository userRepository;
 
     @InjectMocks
     IssueService issueService;
@@ -52,6 +58,25 @@ class IssueServiceTest {
             comment.setId(nextCommentId++);
             return comment;
         });
+        lenient().when(userRepository.findByUsername("dev1"))
+                .thenReturn(Optional.of(new UserAccount(1L, "dev1", "pw", Role.DEV)));
+        lenient().when(userRepository.findByUsername("dev2"))
+                .thenReturn(Optional.of(new UserAccount(2L, "dev2", "pw", Role.DEV)));
+    }
+
+    @Test
+    void assignIssue_코멘트없으면_예외() {
+        assertThrows(IllegalArgumentException.class,
+                () -> issueService.assignIssue(issue.getId(), "dev1", "PL1", "   "));
+    }
+
+    @Test
+    void assignIssue_개발자가_아니면_예외() {
+        when(userRepository.findByUsername("admin"))
+                .thenReturn(Optional.of(new UserAccount(1L, "admin", "pw", Role.ADMIN)));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> issueService.assignIssue(issue.getId(), "admin", "PL1", "assign reason"));
     }
 
     @Test

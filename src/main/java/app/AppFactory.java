@@ -30,7 +30,7 @@ public final class AppFactory {
         ProjectController projectController = new ProjectController(projectService);
         controller.IssueController issueController =
                 new controller.IssueController(
-                        new service.IssueService(issueRepository),
+                        new service.IssueService(issueRepository, userRepository),
                         projectService,
                         new TFRecommendService(issueRepository));
 
@@ -62,20 +62,20 @@ public final class AppFactory {
             ProjectController projectController) {
         model.Project project = projectController.createProject("project1");
 
-        model.Issue loginIssue = projectController.addIssue(project.getId(), "Login fails after password reset",
+        model.Issue loginIssue = issueController.createIssue(project.getId(), "Login fails after password reset",
                 "Users cannot sign in after resetting a password.", "tester1", model.Priority.CRITICAL);
         issueController.assignIssue(loginIssue.getId(), "dev1", "PL1", "Please check auth token refresh.");
         issueController.markFixed(loginIssue.getId(), "dev1", "Patched token refresh.");
         issueController.resolveIssue(loginIssue.getId(), "tester1", "Verified on test server.");
         issueController.closeIssue(loginIssue.getId(), "PL1", "Closed after verification.");
 
-        model.Issue searchIssue = projectController.addIssue(project.getId(), "Search filter ignores assignee",
+        model.Issue searchIssue = issueController.createIssue(project.getId(), "Search filter ignores assignee",
                 "Assignee filter returns all issues.", "tester2", model.Priority.MAJOR);
         issueController.assignIssue(searchIssue.getId(), "dev2", "PL1", "Please inspect search filtering.");
         issueController.markFixed(searchIssue.getId(), "dev2", "Fixed assignee condition.");
         issueController.resolveIssue(searchIssue.getId(), "tester2", "Verified filter result.");
 
-        projectController.addIssue(project.getId(), "Issue detail comment order is reversed",
+        issueController.createIssue(project.getId(), "Issue detail comment order is reversed",
                 "Newest comment is shown before older comments.", "tester1", model.Priority.MINOR);
     }
 
