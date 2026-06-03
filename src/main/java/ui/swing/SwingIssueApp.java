@@ -294,9 +294,20 @@ public class SwingIssueApp extends JFrame {
         commentPanel.add(workflowCommentLabel, BorderLayout.NORTH);
         commentPanel.add(new JScrollPane(workflowCommentArea), BorderLayout.CENTER);
 
+        JButton learnNowButton = new JButton("Retrain");
+        learnNowButton.addActionListener(e -> runSafely(() -> {
+            projectController.findAllProjects().forEach(project -> controller.learnNow(project.getId()));
+            Issue issue = selectedIssue();
+            if (issue != null) {
+                updateAssignmentRecommendation(issue);
+            }
+            showStatus("학습 완료. 추천 결과가 갱신되었습니다.");
+        }));
+
         JPanel recommendationPanel = new JPanel(new BorderLayout());
         recommendationPanel.setBorder(BorderFactory.createTitledBorder("Recommendation Result"));
         recommendationPanel.add(new JScrollPane(recommendationArea), BorderLayout.CENTER);
+        recommendationPanel.add(learnNowButton, BorderLayout.SOUTH);
 
         JPanel developerPanel = new JPanel(new BorderLayout());
         developerPanel.setBorder(BorderFactory.createTitledBorder("Available Developers"));

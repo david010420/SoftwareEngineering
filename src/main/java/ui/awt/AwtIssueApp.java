@@ -202,6 +202,7 @@ public class AwtIssueApp extends Frame {
 
         Panel reportsButtons = new Panel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         addRoleButton(reportsButtons, "Recommend", this::recommend, new IssueStatus[0], Role.PL);
+        addRoleButton(reportsButtons, "Retrain", this::learnNow, null, Role.PL);
         addRoleButton(reportsButtons, "Refresh Developers", this::refreshDeveloperChoices, null, Role.PL);
         addRoleButton(reportsButtons, "Stats", this::stats, null, Role.ADMIN, Role.PL);
         reportOutput.setEditable(false);
@@ -345,6 +346,12 @@ public class AwtIssueApp extends Frame {
             refresh(controller.issues());
             showMessage("Issue changed to " + newStatus + ".");
         }
+    }
+
+    private void learnNow() {
+        requireRole(Role.PL, "Only PL can trigger learning.");
+        projectController.findAllProjects().forEach(project -> controller.learnNow(project.getId()));
+        showMessage("학습 완료.");
     }
 
     private void recommend() {
