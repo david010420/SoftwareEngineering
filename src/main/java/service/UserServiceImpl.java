@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService{
                 .orElseThrow(() -> new RuntimeException(username));
 
         if (!account.checkPassword(password)) {
-            throw new RuntimeException();
+            throw new RuntimeException("비밀번호가 올바르지 않습니다.");
         }
         return account;
     }

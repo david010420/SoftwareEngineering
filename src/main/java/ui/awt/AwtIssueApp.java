@@ -53,6 +53,7 @@ public class AwtIssueApp extends Frame {
     private final Choice actionAssignee = new Choice();
     private final TextArea actionComment = new TextArea("Updated from AWT UI", 3, 40);
     private final TextField adminUsername = new TextField("newUser");
+    private final TextField adminPassword = new TextField();
     private final Choice adminRole = new Choice();
     private final TextField adminProject = new TextField("new-project");
     private final TextArea reportOutput = new TextArea();
@@ -209,10 +210,12 @@ public class AwtIssueApp extends Frame {
         reports.add(reportsButtons, BorderLayout.NORTH);
         reports.add(reportOutput, BorderLayout.CENTER);
 
+        adminPassword.setEchoChar('*');
         Panel adminFields = formPanel();
         addFormRow(adminFields, 0, "Username", adminUsername);
-        addFormRow(adminFields, 1, "Role", adminRole);
-        addFormRow(adminFields, 2, "Project", adminProject);
+        addFormRow(adminFields, 1, "Password", adminPassword);
+        addFormRow(adminFields, 2, "Role", adminRole);
+        addFormRow(adminFields, 3, "Project", adminProject);
         Panel adminButtons = new Panel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         addRoleButton(adminButtons, "Add User", this::addUser, null, Role.ADMIN);
         addRoleButton(adminButtons, "Add Project", this::addProject, null, Role.ADMIN);
@@ -422,9 +425,15 @@ public class AwtIssueApp extends Frame {
 
     private void addUser() {
         requireRole(Role.ADMIN, "Only admin can add users.");
-        userController.register(currentUser.getUsername(), adminUsername.getText(), "1234", Role.valueOf(adminRole.getSelectedItem()));
+        String username = adminUsername.getText().trim();
+        String password = adminPassword.getText().trim();
+        if (username.isBlank() || password.isBlank()) {
+            throw new IllegalStateException("Username과 Password를 입력해 주세요.");
+        }
+        userController.register(currentUser.getUsername(), username, password, Role.valueOf(adminRole.getSelectedItem()));
+        adminPassword.setText("");
         refreshDeveloperChoices();
-        showMessage("User added. Default password is 1234.");
+        showMessage("User added: " + username);
     }
 
     private void addProject() {

@@ -49,10 +49,12 @@ public final class AppFactory {
         userRepository.save(new UserAccount("admin", "1234", Role.ADMIN));
         userRepository.save(new UserAccount("PL1", "1234", Role.PL));
         userRepository.save(new UserAccount("PL2", "1234", Role.PL));
-        userRepository.save(new UserAccount("dev1", "1234", Role.DEV));
-        userRepository.save(new UserAccount("dev2", "1234", Role.DEV));
-        userRepository.save(new UserAccount("tester1", "1234", Role.TESTER));
-        userRepository.save(new UserAccount("tester2", "1234", Role.TESTER));
+        for (int i = 1; i <= 10; i++) {
+            userRepository.save(new UserAccount("dev" + i, "1234", Role.DEV));
+        }
+        for (int i = 1; i <= 5; i++) {
+            userRepository.save(new UserAccount("tester" + i, "1234", Role.TESTER));
+        }
     }
 
     private static void seedIssueBackendDemoData(

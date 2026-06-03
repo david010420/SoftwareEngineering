@@ -781,17 +781,29 @@ public class SwingIssueApp extends JFrame {
 
     private void addUser() {
         requireRole(Role.ADMIN, "Only admin can add users.");
-        String username = input("Username");
-        if (username == null) {
+        JTextField usernameField = new JTextField();
+        JPasswordField passwordField = new JPasswordField();
+        JComboBox<Role> roleBox = new JComboBox<>(Role.values());
+        roleBox.setSelectedItem(Role.DEV);
+        JPanel form = new JPanel(new GridLayout(3, 2, 6, 6));
+        form.add(new JLabel("Username"));
+        form.add(usernameField);
+        form.add(new JLabel("Password"));
+        form.add(passwordField);
+        form.add(new JLabel("Role"));
+        form.add(roleBox);
+        int result = JOptionPane.showConfirmDialog(this, form, "Add User", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) {
             return;
         }
-        Role role = (Role) JOptionPane.showInputDialog(this, "Role", "Add User",
-                JOptionPane.PLAIN_MESSAGE, null, Role.values(), Role.DEV);
-        if (role != null) {
-            userController.register(currentUser.getUsername(), username, "1234", role);
-            refreshDeveloperChoices();
-            showStatus("User added. Default password is 1234.");
+        String username = usernameField.getText().trim();
+        String password = new String(passwordField.getPassword());
+        if (username.isBlank() || password.isBlank()) {
+            throw new IllegalStateException("Username과 Password를 입력해 주세요.");
         }
+        userController.register(currentUser.getUsername(), username, password, (Role) roleBox.getSelectedItem());
+        refreshDeveloperChoices();
+        showStatus("User added: " + username);
     }
 
     private void deleteUser() {
