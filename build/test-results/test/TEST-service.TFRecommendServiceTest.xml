@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="service.TFRecommendServiceTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-05-28T06:58:54" hostname="DESKTOP-MEGOCV4" time="2.574">
+  <properties/>
+  <testcase name="cal_NEW상태만존재한다면_종료()" classname="service.TFRecommendServiceTest" time="2.555"/>
+  <testcase name="cal_이슈가존재하지않으면_종료()" classname="service.TFRecommendServiceTest" time="0.007"/>
+  <testcase name="cal_fixer없는이슈만있다면_종료()" classname="service.TFRecommendServiceTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

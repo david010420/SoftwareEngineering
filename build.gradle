@@ -1,0 +1,50 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'its'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.mockito:mockito-core:5.11.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.11.0'
+    implementation 'org.xerial:sqlite-jdbc:3.45.3.0'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainClass = 'ui.swing.SwingIssueApp'
+}
+
+task runSwing(type: JavaExec) {
+    group = 'application'
+    description = 'Run Swing UI'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'ui.swing.SwingIssueApp'
+}
+
+task runAWT(type: JavaExec) {
+    group = 'application'
+    description = 'Run AWT UI'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'ui.awt.AwtIssueApp'
+}

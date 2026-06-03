@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="service.ProjectServiceTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-05-28T06:58:54" hostname="DESKTOP-MEGOCV4" time="0.019">
+  <properties/>
+  <testcase name="deleteProject_없는프로젝트면_예외()" classname="service.ProjectServiceTest" time="0.003"/>
+  <testcase name="deleteProject_프로젝트와_해당이슈들이_같이삭제된다()" classname="service.ProjectServiceTest" time="0.007"/>
+  <testcase name="createProject_성공()" classname="service.ProjectServiceTest" time="0.002"/>
+  <testcase name="createProject_이름중복이면_예외()" classname="service.ProjectServiceTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

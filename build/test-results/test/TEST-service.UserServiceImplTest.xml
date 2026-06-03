@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="service.UserServiceImplTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-05-28T06:58:56" hostname="DESKTOP-MEGOCV4" time="0.28">
+  <properties/>
+  <testcase name="register_성공()" classname="service.UserServiceImplTest" time="0.164"/>
+  <testcase name="register_중복_username이면_예외()" classname="service.UserServiceImplTest" time="0.008"/>
+  <testcase name="register_ADMIN_아니면_예외()" classname="service.UserServiceImplTest" time="0.037"/>
+  <testcase name="login_없는유저이면_예외()" classname="service.UserServiceImplTest" time="0.013"/>
+  <testcase name="login_틀린비밀번호이면_예외()" classname="service.UserServiceImplTest" time="0.01"/>
+  <testcase name="delete_성공()" classname="service.UserServiceImplTest" time="0.012"/>
+  <testcase name="delete_없는대상이면_예외()" classname="service.UserServiceImplTest" time="0.008"/>
+  <testcase name="delete_비ADMIN이면_예외()" classname="service.UserServiceImplTest" time="0.006"/>
+  <testcase name="login_성공()" classname="service.UserServiceImplTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

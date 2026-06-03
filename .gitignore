@@ -1,0 +1,62 @@
+out/
+out-test/
+
+# ========== Java ==========
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# ========== Build outputs ==========
+target/                 # Maven
+build/                  # Gradle
+out/                    # IntelliJ default
+bin/                    # Eclipse default
+.gradle/
+
+# ========== IDE ==========
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Eclipse
+.classpath
+.project
+.settings/
+.metadata/
+.factorypath
+.apt_generated/
+.springBeans
+.sts4-cache/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# ========== OS ==========
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ========== Project: persistent storage ==========
+data/
+*.db
+*.sqlite
+*.sqlite3
+

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="service.IssueServiceTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-05-28T06:58:54" hostname="DESKTOP-MEGOCV4" time="0.105">
+  <properties/>
+  <testcase name="reportIssue_없는프로젝트면_예외()" classname="service.IssueServiceTest" time="0.067"/>
+  <testcase name="상태전이_시나리오_NEW_ASSIGNED_FIXED_RESOLVED_CLOSED()" classname="service.IssueServiceTest" time="0.012"/>
+  <testcase name="reportIssue_성공_NEW_기본우선순위_MAJOR()" classname="service.IssueServiceTest" time="0.003"/>
+  <testcase name="markFixed_다른개발자면_예외()" classname="service.IssueServiceTest" time="0.005"/>
+  <testcase name="addComment_여러번추가하면_누적된다()" classname="service.IssueServiceTest" time="0.002"/>
+  <testcase name="getIssue_없는이슈면_IssueNotFoundException()" classname="service.IssueServiceTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
