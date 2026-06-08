@@ -35,7 +35,7 @@ public class TFRecommendService implements RecommendService {
             return List.of();   // 학습할 해결 이슈가 없음
         }
 
-        // 1) 타깃 이슈의 TF-IDF 벡터 계산
+        // 타깃 이슈의 TF-IDF 벡터 계산
         Map<String, Double> idf = idfTable.getOrDefault(projectId, Map.of());
         List<String> targetTokens =
                 tokenize(target.getTitle() + " " + target.getDescription());
@@ -45,7 +45,7 @@ public class TFRecommendService implements RecommendService {
             return List.of();
         }
 
-        // 2) 각 기존 이슈와 코사인 유사도 계산 → fixer별 최고 점수 집계
+        // 각 기존 이슈와 코사인 유사도 계산 → fixer별 최고 점수 집계
         Map<String, Double> scoreByFixer = new HashMap<>();
         for (IndexEntry entry : entries) {
             double sim = cosineSimilarity(targetVector, entry.tfidfVector);
@@ -53,7 +53,7 @@ public class TFRecommendService implements RecommendService {
             scoreByFixer.merge(entry.fixer, sim, Math::max);
         }
 
-        // 3) 점수 내림차순 정렬 후 상위 topN fixer 반환
+        // 점수 내림차순 정렬 후 상위 topN fixer 반환
         return scoreByFixer.entrySet().stream()
                 .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
                 .limit(topN)
